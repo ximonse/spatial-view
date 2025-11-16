@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Spatial View - Visual Second Brain för handskrivna anteckningar">
+  <meta name="theme-color" content="#ffffff">
+  <title>Spatial View</title>
+
+  <!-- Ladda CSS direkt som vanlig stylesheet (SNABBFIX) -->
+  <link rel="stylesheet" href="./src/styles.css">
+
+  <!-- Relativ script-länk -->
+  <script type="module" src="./src/main.js"></script>
+</head>
+<body>
+  <!-- Floating header - always visible -->
+  <div id="floating-header">SPATIAL VIEW</div>
+
+  <!-- Info overlay -->
+  <div id="info-overlay">
+    <div id="info-content">
+      <button id="info-close">&times;</button>
+      <h2>Spatial View</h2>
+
+      <div class="info-section">
+        <p>En digital <strong>visuospatial sketchpad</strong> för dina handskrivna anteckningar och idéer. Precis som arbetsminnets visuospatiala komponent låter Spatial View dig organisera och[...]</p>
+        <p><strong>Skapad av:</strong> ximonse och Claude</p>
+        <p><strong>⚠️ Beta-version:</strong> Detta är en tidig version som kan vara ostabil. Ladda ner dina kort regelbundet om arbetet är viktigt!</p>
+      </div>
+
+      <!-- ... resten of page unchanged ... -->
+    </div>
+  </div>
+
+  <div id="app">
+    <header id="toolbar">
+      <h1>Spatial View</h1>
+      <div id="toolbar-actions">
+        <button id="btn-download">💾</button>
+        <button id="btn-theme-toggle">🎨</button>
+        <button id="btn-view-toggle">▬</button>
+        <button id="btn-ui-mode-toggle">⚙️</button>
+        <input type="search" id="search-input" placeholder="Sök kort...">
+      </div>
+    </header>
+    
+    <main id="main-container">
+      <div id="board-view" class="view active">
+        <div id="canvas-container"></div>
+      </div>
+      
+      <div id="column-view" class="view">
+        <div id="card-list"></div>
+      </div>
+    </main>
+  </div>
+
+</body>
+</html>

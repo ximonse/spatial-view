@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Spatial View - Visual Second Brain för handskrivna anteckningar">
+  <meta name="theme-color" content="#ffffff">
+  <title>Spatial View</title>
+  <script type="module" crossorigin src="/spatial-view/assets/index-DdSQloym.js"></script>
+  <link rel="modulepreload" crossorigin href="/spatial-view/assets/konva-DF021KA-.js">
+  <link rel="modulepreload" crossorigin href="/spatial-view/assets/dexie-nOSQWKqj.js">
+  <link rel="stylesheet" crossorigin href="/spatial-view/assets/index-DzGCkHVL.css">
+</head>
+<body>
+  <!-- Floating header - always visible -->
+  <div id="floating-header">SPATIAL VIEW</div>
+
+  <!-- Info overlay -->
+  <div id="info-overlay">
+    <div id="info-content">
+      <button id="info-close">&times;</button>
+      <h2>Spatial View</h2>
+
+      <div class="info-section">
+        <p>En digital <strong>visuospatial sketchpad</strong> för dina handskrivna anteckningar och idéer. Precis som arbetsminnets visuospatiala komponent låter Spatial View dig organisera och manipulera visuell information fritt i rummet.</p>
+        <p><strong>Skapad av:</strong> ximonse och Claude</p>
+        <p><strong>⚠️ Beta-version:</strong> Detta är en tidig version som kan vara ostabil. Ladda ner dina kort regelbundet om arbetet är viktigt!</p>
+      </div>
+
+      <div class="info-section">
+        <h3>Snabbguide</h3>
+        <ul class="tip-list">
+          <li>
+            <span class="tip-icon">⌘</span>
+            <span><strong>Kommandopalett (Space):</strong> Snabb åtkomst till alla funktioner</span>
+          </li>
+          <li>
+            <span class="tip-icon">+</span>
+            <span><strong>Lägg till:</strong> Skapa nytt kort eller importera bild</span>
+          </li>
+          <li>
+            <span class="tip-icon">🎨</span>
+            <span><strong>Tema:</strong> Byt mellan ljust, mörkt och e-ink läge</span>
+          </li>
+          <li>
+            <span class="tip-icon">🔄</span>
+            <span><strong>Vy (K):</strong> Växla mellan brädvy och kolumnvy</span>
+          </li>
+          <li>
+            <span class="tip-icon">👁️</span>
+            <span><strong>UI-läge:</strong> Anpassa synliga knappar för din enhet</span>
+          </li>
+          <li>
+            <span class="tip-icon">🔍</span>
+            <span><strong>Sök:</strong> Boolean search med AND, OR, NOT och wildcards</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="info-section">
+        <h3>Sorteringsmöjligheter</h3>
+        <ul class="tip-list">
+          <li><span class="tip-icon">🔢</span><span><strong>Spatial:</strong> Kom ihåg var saker finns genom position</span></li>
+          <li><span class="tip-icon">📅</span><span><strong>Temporal:</strong> Kolumnvy sorterar efter senast ändrad</span></li>
+          <li><span class="tip-icon">🏷️</span><span><strong>Kategorisk:</strong> Använd färger för gruppering</span></li>
+          <li><span class="tip-icon">🔍</span><span><strong>Boolean search:</strong> Filtrera med AND, OR, NOT</span></li>
+        </ul>
+      </div>
+
+      <div class="info-section">
+        <h3>Tips</h3>
+        <ul class="tip-list">
+          <li><span class="tip-icon">💡</span><span>Dubbelklicka på ett kort för att redigera</span></li>
+          <li><span class="tip-icon">💡</span><span>Använd Ctrl+C/V för att kopiera och klistra in kort</span></li>
+          <li><span class="tip-icon">💡</span><span>Tryck Escape för att avmarkera allt</span></li>
+          <li><span class="tip-icon">💡</span><span>Håll Ctrl och klicka för att markera flera kort</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="app">
+    <header id="toolbar">
+      <h1>Spatial View</h1>
+      <div id="toolbar-actions">
+        <button id="btn-download">💾</button>
+        <button id="btn-theme-toggle">🎨</button>
+        <button id="btn-view-toggle">▬</button>
+        <button id="btn-ui-mode-toggle">⚙️</button>
+        <input type="search" id="search-input" placeholder="Sök kort...">
+      </div>
+    </header>
+    
+    <main id="main-container">
+      <!-- Board View (Konva canvas) -->
+      <div id="board-view" class="view active">
+        <div id="canvas-container"></div>
+      </div>
+      
+      <!-- Column View (scrollable list) -->
+      <div id="column-view" class="view">
+        <div id="card-list"></div>
+      </div>
+    </main>
+  </div>
+
+</body>
+</html>

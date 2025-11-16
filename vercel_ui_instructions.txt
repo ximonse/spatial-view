@@ -1,0 +1,50 @@
+# Vercel Project Configuration Instructions
+
+Please follow these steps carefully to configure your Vercel project settings.
+These settings, combined with the simplified `vercel.json` file (which only contains `rewrites`), will correctly deploy your monorepo project.
+
+## Step 1: Update `vercel.json` (if you haven't already)
+
+1.  Ensure you have moved the `root_vercel.json` file to the **root** of your `ximonse.github.io` repository.
+2.  Rename it to `vercel.json`.
+3.  The content of this `vercel.json` file should be:
+    ```json
+    {
+      "rewrites": [
+        {
+          "source": "/api/gemini",
+          "destination": "/api/gemini"
+        },
+        {
+          "source": "/(.*)",
+          "destination": "/index.html"
+        }
+      ]
+    }
+    ```
+    (Note: This file should NOT contain a "builds" section.)
+
+## Step 2: Configure Vercel Project Settings (UI)
+
+Go to your Vercel project dashboard for `spatial-view` and navigate to `Settings -> General`.
+
+### A. Build & Development Settings
+
+Locate the "Build & Development Settings" section and configure the following fields precisely:
+
+*   **Framework Preset:** Select `Vite`
+*   **Build Command:** Enter `cd spatial-view && npm run build`
+*   **Output Directory:** Enter `spatial-view/dist`
+*   **Install Command:** Enter `cd spatial-view && npm install`
+
+### B. Root Directory
+
+Locate the "Root Directory" field.
+
+*   **Root Directory:** Ensure this field is **empty**. Do NOT set it to `spatial-view`.
+
+## Step 3: Deploy
+
+After making these changes, trigger a new deployment on Vercel. This can usually be done by pushing a small change to your repository or by manually triggering a redeploy from the Vercel dashboard.
+
+This configuration ensures that Vercel correctly builds your project from the `spatial-view` subdirectory and routes API calls and frontend requests as intended.

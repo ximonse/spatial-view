@@ -1,0 +1,82 @@
+/* ================================================================ */
+/* E-INK THEME - Optimized for e-ink devices (Viwoood AiPaper Mini) */
+/* No gradients, no shadows, sharp black/white contrast            */
+/* ================================================================ */
+
+body.eink-theme {
+    /* Colors - sharp black/white contrast */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --text-primary: #000000;
+    --text-secondary: #333333;  /* Darker for better contrast */
+    --border-color: #000000;    /* Pure black borders */
+    --accent-color: #000000;
+
+    background: var(--bg-primary);
+    color: var(--text-primary);
+
+    /* Font rendering optimizations for e-ink */
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-weight: 500;  /* Slightly bolder for better visibility */
+}
+
+/* Toolbar */
+.eink-theme #toolbar {
+    background: #ffffff;
+    border-bottom: 2px solid #000000;
+}
+
+.eink-theme #toolbar h1 {
+    color: #000000;
+}
+
+/* Buttons - no gradients or shadows */
+.eink-theme button {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #666666;
+    box-shadow: none;
+}
+
+.eink-theme button:hover {
+    background: #000000;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+/* Search input */
+.eink-theme #search-input {
+    background: #ffffff;
+    border: 1px solid #666666;
+    color: #000000;
+    box-shadow: none;
+}
+
+.eink-theme #search-input:focus {
+    border: 2px solid #000000;
+    background: #ffffff;
+    box-shadow: none;
+}
+
+/* Column view */
+.eink-theme #column-view {
+    background: #f5f5f5;
+}
+
+.eink-theme .column-card {
+    background: #ffffff !important;
+    border: 1px solid #666666 !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+}
+
+.eink-theme .column-card:hover {
+    border: 2px solid #000000 !important;
+}
+
+/* Board view */
+.eink-theme #board-view {
+    background: #f5f5f5;
+}

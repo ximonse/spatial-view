@@ -1,0 +1,10 @@
+# Run these commands from the ROOT of your repository (ximonse.github.io/)
+
+# 1. Add the vercel.json file to staging
+git add vercel.json
+
+# 2. Commit the changes
+git commit -m "feat(vercel): Add root-level vercel.json for monorepo config"
+
+# 3. Push the changes to the remote repository
+git push origin master

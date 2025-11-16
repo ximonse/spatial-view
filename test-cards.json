@@ -1,0 +1,88 @@
+{
+  "cards": [
+    {
+      "id": "test-1",
+      "text": "Spatial memory är starkare än linjär minne",
+      "position": { "x": 100, "y": 100 },
+      "cardColor": "yellow",
+      "lastModified": 1699564800000
+    },
+    {
+      "id": "test-2",
+      "text": "Visuell association genom närhet skapar naturliga samband",
+      "position": { "x": 350, "y": 100 },
+      "cardColor": "blue",
+      "lastModified": 1699564900000
+    },
+    {
+      "id": "test-3",
+      "text": "Fri manipulation i 2D-rum speglar hur vi tänker",
+      "position": { "x": 600, "y": 100 },
+      "cardColor": "green",
+      "lastModified": 1699565000000
+    },
+    {
+      "id": "test-4",
+      "text": "Dual Coding Theory\n\nInformation kodad både visuellt och verbalt ger starkare minnesförmåga",
+      "position": { "x": 100, "y": 300 },
+      "cardColor": "pink",
+      "lastModified": 1699565100000
+    },
+    {
+      "id": "test-5",
+      "text": "Baddeley & Hitch (1974)\n\nVisuospatial sketchpad är ansvarig för:\n- Visuell cache\n- Inner scribe\n- Spatial manipulation",
+      "position": { "x": 350, "y": 300 },
+      "cardColor": "purple",
+      "lastModified": 1699565200000
+    },
+    {
+      "id": "test-6",
+      "text": "O'Keefe & Nadel (1978)\n\nPlatsceller i hippocampus skapar kognitiva kartor",
+      "position": { "x": 600, "y": 300 },
+      "cardColor": "orange",
+      "lastModified": 1699565300000
+    },
+    {
+      "id": "test-7",
+      "text": "Tangentbordsgenvägar:\nV = Vertikal\nH = Horisontell\nG+V = Grid Vertical\nG+H = Grid Horizontal\nG+T = Grid Top-aligned",
+      "position": { "x": 100, "y": 500 },
+      "cardColor": "yellow",
+      "lastModified": 1699565400000
+    },
+    {
+      "id": "test-8",
+      "text": "Touch-interaktion:\n- Ett tryck = markera\n- Långtryck = redigera\n- Två fingrar = pinch-to-zoom och panorera",
+      "position": { "x": 350, "y": 500 },
+      "cardColor": "blue",
+      "lastModified": 1699565500000
+    },
+    {
+      "id": "test-9",
+      "text": "Teman:\n☀️ Ljust\n🌙 Mörkt - blå kort, vit text\n📄 E-ink - vita kort, svarta kanter, grå bakgrund",
+      "position": { "x": 600, "y": 500 },
+      "cardColor": "green",
+      "lastModified": 1699565600000
+    },
+    {
+      "id": "test-10",
+      "text": "Kommandopalett\n\nTryck Space för att öppna och se alla kommandon",
+      "position": { "x": 850, "y": 100 },
+      "cardColor": "pink",
+      "lastModified": 1699565700000
+    },
+    {
+      "id": "test-11",
+      "text": "Boolean search:\n(python OR javascript) AND NOT tutorial*\nword1 NEAR/5 word2",
+      "position": { "x": 850, "y": 300 },
+      "cardColor": "purple",
+      "lastModified": 1699565800000
+    },
+    {
+      "id": "test-12",
+      "text": "Beta-version\n⚠️ Ladda ner backup regelbundet!\n\nAnvänd B-tangenten eller 💾 Backup-knappen",
+      "position": { "x": 850, "y": 500 },
+      "cardColor": "orange",
+      "lastModified": 1699565900000
+    }
+  ]
+}

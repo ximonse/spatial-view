@@ -1,0 +1,94 @@
+{
+  "cards": [
+    {
+      "id": 1,
+      "text": "Detta är kort 1 med test innehåll",
+      "tags": ["test", "exempel"],
+      "position": { "x": 100, "y": 100 }
+    },
+    {
+      "id": 2,
+      "text": "Detta är kort 2 med testing funktionalitet",
+      "tags": ["test", "funktioner"],
+      "position": { "x": 300, "y": 100 }
+    },
+    {
+      "id": 3,
+      "text": "Kort nummer 3 handlar om tested resultat",
+      "tags": ["resultat"],
+      "position": { "x": 500, "y": 100 }
+    },
+    {
+      "id": 4,
+      "text": "Hello world från kort fyra",
+      "tags": ["greeting"],
+      "position": { "x": 100, "y": 300 }
+    },
+    {
+      "id": 5,
+      "text": "Hello universe och goodbye world",
+      "tags": ["greeting", "farewell"],
+      "position": { "x": 300, "y": 300 }
+    },
+    {
+      "id": 6,
+      "text": "Card number six with testing",
+      "tags": ["english", "test"],
+      "position": { "x": 500, "y": 300 }
+    },
+    {
+      "id": 7,
+      "text": "Card seven has hello and world within five words here",
+      "tags": ["english", "proximity"],
+      "position": { "x": 100, "y": 500 }
+    },
+    {
+      "id": 8,
+      "text": "Kort åtta innehåller ordet testing men också goodbye",
+      "tags": ["svenska"],
+      "position": { "x": 300, "y": 500 }
+    },
+    {
+      "id": 9,
+      "text": "Detta kort handlar om projekt och innehåller urgent information",
+      "tags": ["projekt", "urgent"],
+      "position": { "x": 500, "y": 500 }
+    },
+    {
+      "id": 10,
+      "text": "Todo: Fixa bugg i systemet - done",
+      "tags": ["todo", "done"],
+      "position": { "x": 100, "y": 700 }
+    },
+    {
+      "id": 11,
+      "text": "Todo: Lägg till ny funktion",
+      "tags": ["todo"],
+      "position": { "x": 300, "y": 700 }
+    },
+    {
+      "id": 12,
+      "text": "Running walking talking - alla verb slutar på ing",
+      "tags": ["verbs"],
+      "position": { "x": 500, "y": 700 }
+    },
+    {
+      "id": 13,
+      "text": "Kort med exakt fras: exact match test här",
+      "tags": ["exact"],
+      "position": { "x": 100, "y": 900 }
+    },
+    {
+      "id": 14,
+      "text": "Teaching och learning är nära varandra",
+      "tags": ["education"],
+      "position": { "x": 300, "y": 900 }
+    },
+    {
+      "id": 15,
+      "text": "Detta kort har både kort och card i samma text",
+      "tags": ["bilingual"],
+      "position": { "x": 500, "y": 900 }
+    }
+  ]
+}

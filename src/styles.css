@@ -1,0 +1,425 @@
+/* Import themes FIRST (CSS requirement - must be before ALL other code including comments) */
+@import './assets/theme-dark.css';
+@import './assets/theme-sepia.css';
+@import './assets/theme-eink.css';
+@import './assets/cards-colors.css';
+
+/**
+ * Spatial View v1.0
+ * Base styles
+ */
+
+/* CSS Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* CSS Variables */
+:root {
+  /* Colors - Light theme (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --border-color: #e0e0e0;
+  --accent-color: #2196F3;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+  
+  /* Layout */
+  --toolbar-height: 60px;
+  --border-radius: 8px;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
+}
+
+/* Base */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Toolbar */
+#toolbar {
+  height: var(--toolbar-height);
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 var(--spacing-lg);
+  flex-shrink: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  pointer-events: none; /* Låt klick gå igenom toolbar själv */
+}
+
+#toolbar-actions {
+  pointer-events: auto; /* Men knappar ska vara klickbara */
+}
+
+#toolbar h1 {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  display: none; /* Dölj eftersom vi har floating header istället */
+}
+
+#toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Buttons */
+button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+  font-family: var(--font-family);
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button:active {
+  opacity: 0.8;
+}
+
+/* Search input */
+#search-input {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-md);
+  font-family: var(--font-family);
+  width: 300px;
+  transition: border-color var(--transition-fast);
+}
+
+#search-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+/* Main container */
+#main-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  /* Ingen margin-top - canvas ska gå bakom transparent toolbar */
+}
+
+/* Views */
+.view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+}
+
+.view.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Board View */
+#board-view {
+  background: var(--bg-primary);
+}
+
+#canvas-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Column View */
+#column-view {
+  background: var(--bg-secondary);
+  overflow-y: auto;
+}
+
+#card-list {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+}
+
+/* Device-specific styles */
+.device-mobile #toolbar h1 {
+  font-size: var(--font-size-lg);
+}
+
+.device-mobile #search-input {
+  width: 150px;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  #toolbar {
+    padding: 0 var(--spacing-sm);
+  }
+
+  #toolbar-actions {
+    gap: var(--spacing-sm);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  button {
+    padding: var(--spacing-sm);
+    font-size: 14px;
+    white-space: nowrap;
+    min-width: auto;
+  }
+
+  #search-input {
+    width: 120px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  button {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  #search-input {
+    width: 80px;
+    font-size: 12px;
+  }
+
+  #toolbar-actions {
+    gap: 4px;
+  }
+}
+
+.device-eink {
+  /* E-ink optimizations */
+  --transition-fast: 0ms;
+  --transition-normal: 0ms;
+}
+
+.device-eink * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* E-ink theme */
+.eink-theme {
+  background: #f5f5f5;
+}
+
+.eink-theme #toolbar {
+  background: transparent;
+  border-bottom: none;
+}
+
+.eink-theme button {
+  background: #fff;
+  color: #000;
+  border: 2px solid #000;
+  box-shadow: none;
+}
+
+.eink-theme button:hover {
+  background: #e0e0e0;
+  box-shadow: none;
+}
+
+.eink-theme #search-input {
+  background: #fff;
+  border: 2px solid #000;
+  box-shadow: none;
+}
+
+.eink-theme #floating-header {
+  background: #fff;
+  border: 2px solid #000;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.eink-theme #floating-header:hover {
+  background: #fff;
+  box-shadow: none;
+}
+
+/* Floating header */
+#floating-header {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: #000;
+  z-index: 999;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 8px 16px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  backdrop-filter: blur(10px);
+}
+
+#floating-header:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark theme floating header */
+.dark-theme #floating-header {
+  color: #fff;
+  background: rgba(30, 30, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme #floating-header:hover {
+  background: rgba(40, 40, 40, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Info overlay */
+#info-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10001;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s;
+}
+
+#info-overlay.active {
+  display: flex;
+}
+
+#info-content {
+  background: white;
+  padding: 32px;
+  border-radius: 8px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+#info-content h2 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 24px;
+  color: #333;
+}
+
+#info-content p {
+  margin-bottom: 16px;
+  line-height: 1.6;
+  color: #666;
+}
+
+#info-content .info-section {
+  margin-bottom: 24px;
+}
+
+#info-content .info-section h3 {
+  margin-bottom: 8px;
+  font-size: 18px;
+  color: #444;
+}
+
+#info-content .tip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#info-content .tip-list li {
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#info-content .tip-icon {
+  font-size: 20px;
+  min-width: 24px;
+}
+
+#info-close {
+  float: right;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #999;
+  background: none;
+  border: none;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  border-radius: 4px;
+}
+
+#info-close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -1,0 +1,62 @@
+/* Dark Theme - CSS Variables Override */
+body.dark-theme {
+    /* Colors */
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d3748;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0aec0;
+    --border-color: #4a5568;
+    --accent-color: #4da6ff;
+
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Toolbar */
+.dark-theme #toolbar {
+    background: var(--bg-secondary);
+    border-bottom-color: var(--border-color);
+}
+
+.dark-theme #toolbar h1 {
+    color: var(--text-primary);
+}
+
+/* Buttons */
+.dark-theme button {
+    background: linear-gradient(145deg, #4a5568 0%, #3a4458 100%);
+    color: #f7fafc;
+    border: 1px solid #5a6572;
+}
+
+.dark-theme button:hover {
+    background: linear-gradient(145deg, #5a6572 0%, #4a5568 100%);
+}
+
+/* Search input */
+.dark-theme #search-input {
+    background: linear-gradient(145deg, #4a5568 0%, #3a4458 100%);
+    border-color: #5a6572;
+    color: #f7fafc;
+}
+
+.dark-theme #search-input:focus {
+    border-color: #6b7280;
+    background: linear-gradient(145deg, #5a6572 0%, #4a5568 100%);
+}
+
+/* Column view */
+.dark-theme #column-view {
+    background: var(--bg-primary);
+}
+
+.dark-theme .column-card {
+    background: #2d3748 !important;
+    border-color: #4a5568 !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Board view */
+.dark-theme #board-view {
+    background: var(--bg-primary);
+}

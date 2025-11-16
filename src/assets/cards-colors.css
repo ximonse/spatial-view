@@ -1,0 +1,213 @@
+        /* Card Colors - Light Theme */
+        .light-theme .card-color-1 { background-color: #ffebee !important; } /* Soft Red */
+        .light-theme .card-color-2 { background-color: #e3f2fd !important; } /* Soft Blue */
+        .light-theme .card-color-3 { background-color: #e8f5e8 !important; } /* Soft Green */
+        .light-theme .card-color-4 { background-color: #fff3e0 !important; } /* Soft Orange */
+        .light-theme .card-color-5 { background-color: #f3e5f5 !important; } /* Soft Purple */
+        
+        /* Card Colors - Dark Theme */
+        .dark-theme .card-color-1 { background-color: #4a2c2a !important; } /* Dark Red */
+        .dark-theme .card-color-2 { background-color: #1e3a5f !important; } /* Dark Blue */
+        .dark-theme .card-color-3 { background-color: #2d4a2d !important; } /* Dark Green */
+        .dark-theme .card-color-4 { background-color: #4a3429 !important; } /* Dark Orange */
+        .dark-theme .card-color-5 { background-color: #3d2a4a !important; } /* Dark Purple */
+        
+        /* Card Colors - Sepia Theme */
+        .sepia-theme .card-color-1 { background-color: #f4e6d7 !important; } /* Sepia Red */
+        .sepia-theme .card-color-2 { background-color: #e6d7c3 !important; } /* Sepia Blue */
+        .sepia-theme .card-color-3 { background-color: #e8e6d7 !important; } /* Sepia Green */
+        .sepia-theme .card-color-4 { background-color: #f0e6d2 !important; } /* Sepia Orange */
+        .sepia-theme .card-color-5 { background-color: #ede6d7 !important; } /* Sepia Purple */
+        
+        /* Color Picker Popup */
+        .color-picker-popup {
+            position: fixed;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 2000;
+        }
+        
+        .dark-theme .color-picker-popup {
+            background: #2d2d2d;
+            border-color: #555;
+            color: #e0e0e0;
+        }
+        
+        .sepia-theme .color-picker-popup {
+            background: #e8d7c3;
+            border-color: #c8a882;
+            color: #5d4e37;
+        }
+        
+        .color-picker-grid {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        
+        .color-picker-dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #333;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .color-picker-dot:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Dark theme adjustments for dot text */
+        .dark-theme .color-picker-dot {
+            color: #fff !important;
+            border-color: #666;
+        }
+        
+        /* Sepia theme adjustments for dot text */
+        .sepia-theme .color-picker-dot {
+            color: #5d4e37 !important;
+            border-color: #8B7355;
+        }
+        
+        /* Ensure numbers are visible with stronger contrast */
+        .color-picker-dot {
+            text-shadow: 0 0 3px rgba(0,0,0,0.7);
+        }
+        
+        .dark-theme .color-picker-dot {
+            text-shadow: 0 0 3px rgba(0,0,0,0.9);
+        }
+        
+        /* Color picker dot colors - Light theme */
+        .color-picker-dot.card-color-1 { background-color: #d4f2d4; } /* Grön */
+        .color-picker-dot.card-color-2 { background-color: #ffe4b3; } /* Orange */
+        .color-picker-dot.card-color-3 { background-color: #ffc1cc; } /* Röd */
+        .color-picker-dot.card-color-4 { background-color: #fff7b3; } /* Gul */
+        .color-picker-dot.card-color-5 { background-color: #f3e5f5; } /* Lila */
+        .color-picker-dot.card-color-6 { background-color: #c7e7ff; } /* Blå */
+        .color-picker-dot.card-color-7 { background-color: #e0e0e0; } /* Grå */
+        .color-picker-dot.card-color-8 { background-color: #ffffff; } /* Vit */
+        
+        /* Dark theme color picker dots */
+        .dark-theme .color-picker-dot.card-color-1 { background-color: #3d5a3d; } /* Mörk Grön */
+        .dark-theme .color-picker-dot.card-color-2 { background-color: #5a4d3a; } /* Mörk Orange */
+        .dark-theme .color-picker-dot.card-color-3 { background-color: #5a3c3a; } /* Mörk Röd */
+        .dark-theme .color-picker-dot.card-color-4 { background-color: #5a5a3a; } /* Mörk Gul */
+        .dark-theme .color-picker-dot.card-color-5 { background-color: #4a3d5a; } /* Mörk Lila */
+        .dark-theme .color-picker-dot.card-color-6 { background-color: #2e4a6f; } /* Mörk Blå */
+        .dark-theme .color-picker-dot.card-color-7 { background-color: #555555; } /* Mörk Grå */
+        .dark-theme .color-picker-dot.card-color-8 { background-color: #8a8a8a; } /* Ljusgrå */
+        
+        /* Sepia theme color picker dots */
+        .sepia-theme .color-picker-dot.card-color-1 { background-color: #ded6c7; } /* Sepia Grön */
+        .sepia-theme .color-picker-dot.card-color-2 { background-color: #e6d6c2; } /* Sepia Orange */
+        .sepia-theme .color-picker-dot.card-color-3 { background-color: #ead6c7; } /* Sepia Röd */
+        .sepia-theme .color-picker-dot.card-color-4 { background-color: #ebe2d6; } /* Sepia Gul */
+        .sepia-theme .color-picker-dot.card-color-5 { background-color: #e2d6c7; } /* Sepia Lila */
+        .sepia-theme .color-picker-dot.card-color-6 { background-color: #d6c7b3; } /* Sepia Blå */
+        .sepia-theme .color-picker-dot.card-color-7 { background-color: #c0b8a8; } /* Sepia Grå */
+        .sepia-theme .color-picker-dot.card-color-8 { background-color: #f5f2e8; } /* Sepia Vit */
+        
+        .color-picker-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .color-picker-cancel {
+            text-align: center;
+            margin-top: 10px;
+            padding: 5px 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .dark-theme .color-picker-cancel {
+            background: #555;
+            color: #e0e0e0;
+        }
+        
+        .sepia-theme .color-picker-cancel {
+            background: #d7c8a8;
+            color: #5d4e37;
+        }
+        
+        .color-picker-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .color-picker-grid {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .color-dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #ddd;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        
+        .color-dot:hover {
+            transform: scale(1.1);
+            border-color: #333;
+        }
+        
+        .dark-theme .color-dot {
+            border-color: #555;
+        }
+        
+        .dark-theme .color-dot:hover {
+            border-color: #bbb;
+        }
+        
+        .sepia-theme .color-dot {
+            border-color: #c8a882;
+        }
+        
+        .sepia-theme .color-dot:hover {
+            border-color: #8b7556;
+        }
+        
+        .color-picker-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        .color-picker-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .color-picker-btn.remove {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .color-picker-btn.cancel {
+            background: #6c757d;
+            color: white;
+        }
+        

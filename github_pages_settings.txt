@@ -1,0 +1,35 @@
+# Final Instructions: Configure GitHub Pages Source
+
+This is the final and most critical step. The errors you are seeing are because GitHub is serving your source code directly, instead of serving the built files.
+
+You need to tell GitHub to serve the content from the `gh-pages` branch, which is where our automated workflow is placing the final, built version of your site.
+
+## Step-by-step Instructions
+
+1.  **Go to your repository on GitHub:**
+    Open a web browser and navigate to: `https://github.com/ximonse/ximonse.github.io`
+
+2.  **Open Settings:**
+    Click on the "Settings" tab, located near the top of the page.
+
+3.  **Go to Pages:**
+    In the left-hand sidebar, click on "Pages".
+
+4.  **Configure the Source:**
+    You will see a section named "Build and deployment".
+    *   Under "Source", make sure `Deploy from a branch` is selected.
+    *   Under "Branch", use the dropdown menu to select `gh-pages` as the branch. The folder should be set to `/(root)`.
+
+    The setting should look like this:
+    **Branch: `gh-pages` / `(root)`**
+
+5.  **Save Changes:**
+    Click the "Save" button next to the branch selection.
+
+## What Happens Next
+
+After you save, GitHub Pages will update to serve the files from the `gh-pages` branch. This branch contains the `index.html` and asset files that were correctly processed by the Vite build system.
+
+It might take a minute or two for the change to take effect. You can then refresh `https://ximonse.github.io/spatial-view/` and it should now load correctly.
+
+This is the last piece of the puzzle. I cannot perform this step for you as it requires access to your repository's settings.
