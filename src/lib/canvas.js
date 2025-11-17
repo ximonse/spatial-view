@@ -1639,16 +1639,6 @@ async function flipCard(cardId) {
 
   await updateCard(cardId, { flipped: newFlipped });
   await reloadCanvas();
-
-  // If flipping to back side, open editor automatically
-  if (newFlipped) {
-    setTimeout(() => {
-      const group = cardGroups.get(cardId);
-      if (group) {
-        createInlineEditor(cardId, group, card.backText || '', true);
-      }
-    }, 100); // Small delay to let canvas reload
-  }
 }
 
 /**
