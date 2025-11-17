@@ -332,20 +332,36 @@ export async function getLatestBackupFromDrive() {
 }
 
 /**
- * Download backup from Google Drive
+ * Download backup from Google Drive using direct fetch
  */
 export async function downloadBackupFromDrive(fileId) {
   try {
     const client = await initGoogleDrive();
     if (!client) return null;
 
-    const response = await client.drive.files.get({
-      fileId: fileId,
-      alt: 'media'
+    // Get access token
+    const token = gapi.client.getToken();
+    if (!token) {
+      throw new Error('No access token available');
+    }
+
+    // Download file with direct fetch
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + token.access_token
+      }
     });
 
-    // Convert response to blob
-    const blob = new Blob([response.body], { type: 'application/zip' });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Download failed');
+    }
+
+    // Get blob directly from response
+    const blob = await response.blob();
+    console.log('Downloaded from Drive:', fileId, 'Size:', blob.size, 'bytes');
+
     return blob;
   } catch (error) {
     console.error('Failed to download from Drive:', error);
