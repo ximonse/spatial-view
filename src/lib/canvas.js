@@ -3135,7 +3135,7 @@ ${text}`;
             y: startPosition.y + Math.floor(index / 5) * 250
           };
 
-          await addCard({
+          await createCard({
             text: cardData.text || '',
             tags: cardData.tags || [],
             comments: cardData.comments || '',
@@ -3214,7 +3214,7 @@ ${text}`;
           y: startPosition.y + Math.floor(index / 5) * 250
         };
 
-        await addCard({
+        await createCard({
           text: cardText,
           tags: tags,
           comments: comments,
