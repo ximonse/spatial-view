@@ -86,9 +86,12 @@ Filnamn: `spatial-view-backup-YYYY-MM-DD.zip`
 - Ctrl+Drag för panorering
 
 ### Kort-typer
-- Text-kort (gula post-it stil)
-- Bild-kort (importera foton/skärmdumpar)
-- Dubbelsidiga kort (text på baksidan av bilder)
+- **Text-kort**: Gula post-it stil med text
+- **Bild-kort**: Importera foton/skärmdumpar
+  - Dubbelklick för att redigera (öppnar dialog med bild + textfält)
+  - Kommentarer visas under bilden på framsidan
+  - Högerklick → "🔄 Vänd kort" för read-only baksida med text och taggar
+  - Stöd för Gemini OCR för att extrahera text från bilden
 
 ### Editing
 - Dubbelklicka för att redigera
@@ -127,11 +130,11 @@ Arrangera markerade kort i mönster:
   - Bulk-ändringar
 
 ### Kort-actions
-- Pinna kort (P): Låser position, kan inte flyttas
-- Färglägg kort: Olika färger för kategorisering
-- Flip: Vänd bild-kort för att se text på baksidan
-- Lock/Unlock: Lås kort från redigering
-- Ta bort: Delete-tangent eller kontextmeny
+- **Pinna kort (P)**: Låser position, kan inte flyttas
+- **Färglägg kort**: Olika färger för kategorisering
+- **Vänd kort**: Högerklick → "🔄 Vänd kort" på bildkort visar read-only baksida
+- **Lock/Unlock**: Lås kort från redigering
+- **Ta bort**: Delete-tangent eller högerklicksmeny
 
 ### Import/Export
 - **Importera bilder**: Välj flera bilder samtidigt
@@ -139,9 +142,20 @@ Arrangera markerade kort i mönster:
   - Normal: 800px, 80% kvalitet
   - Hög: 1200px, 90% kvalitet
   - Original: Ingen komprimering
+- **Multi-Import (M)**: Skapa flera kort från text
+  - Format: Dubbel radbrytning = nytt kort
+  - `#taggar` på sista raden = taggar till kortet
+  - `&kommentar` på sista raden = kommentar
+  - Två lägen:
+    - **Skapa kort**: Manuell parsing av formatet
+    - **✨ Analysera med Gemini**: AI extraherar nyckelcitat från lång text
+- **Exportera läsbar text (E)**: Exportera till läsbara format
+  - **HTML**: Färgstylad export som kolumnvy
+  - **Markdown**: Formaterad med kursiva kommentarer
+  - **Plain text**: Enkel oformaterad export
 - **Exportera JSON**: S i kommandopaletten
 - **Importera JSON**: L i kommandopaletten
-- **Backup (NY!)**: B i kommandopaletten - alla kort + bilder som zip
+- **Backup**: B i kommandopaletten - alla kort + bilder som zip
 
 ### Teman
 Byt tema med 🎨-knappen eller kommandopaletten:
@@ -203,7 +217,28 @@ Byt tema med 🎨-knappen eller kommandopaletten:
 ### Import/Export/Backup
 - `S`: Exportera JSON
 - `L`: Importera JSON
-- `B`: Ladda ner backup (NY!)
+- `M`: Multi-import (skapa flera kort från text)
+- `E`: Exportera till läsbar text (HTML/Markdown/Plain)
+- `B`: Ladda ner backup
+
+## AI-funktioner (Gemini)
+
+### Bildanalys med OCR
+- **Läs bild med Gemini** från högerklicksmenyn på bildkort
+- Extraherar:
+  - Text från bilder (OCR)
+  - Datum och tid (om synligt i bilden)
+  - Personer och platser
+  - Automatiska hashtags baserat på innehåll
+- Metadata sparas på kortets baksida
+- Kräver Google AI API-nyckel (gratis på [Google AI Studio](https://makersuite.google.com/app/apikey))
+- API-nyckeln sparas lokalt i webbläsaren
+
+### Text-analys för multi-import
+- **✨ Analysera med Gemini** i multi-import-dialogen (M)
+- Ta lång text och få AI att extrahera nyckelcitat
+- Skapar flera små kort från en text
+- Perfekt för att bryta ner artiklar, föreläsningar, etc.
 
 ## Enhetsstöd
 
