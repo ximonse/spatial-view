@@ -225,7 +225,7 @@ async function getOrCreateFolder(client) {
 }
 
 /**
- * Upload backup to Google Drive
+ * Upload backup to Google Drive using multipart upload
  */
 export async function uploadBackupToDrive(zipBlob) {
   try {
@@ -235,37 +235,67 @@ export async function uploadBackupToDrive(zipBlob) {
     const folderId = await getOrCreateFolder(client);
     const fileName = `spatial-view-backup-${new Date().toISOString().split('T')[0]}.zip`;
 
-    // Convert blob to base64
-    const reader = new FileReader();
-    const base64Data = await new Promise((resolve) => {
-      reader.onloadend = () => resolve(reader.result.split(',')[1]);
-      reader.readAsDataURL(zipBlob);
-    });
+    // Get access token
+    const token = gapi.client.getToken();
+    if (!token) {
+      throw new Error('No access token available');
+    }
 
-    // Create file metadata
+    // Create metadata
     const metadata = {
       name: fileName,
       mimeType: 'application/zip',
       parents: [folderId]
     };
 
-    // Upload file
-    const response = await client.drive.files.create({
-      resource: metadata,
-      media: {
-        mimeType: 'application/zip',
-        body: base64Data
+    // Create multipart request body
+    const boundary = '-------314159265358979323846';
+    const delimiter = "\r\n--" + boundary + "\r\n";
+    const close_delim = "\r\n--" + boundary + "--";
+
+    const contentType = 'application/zip';
+
+    // Read blob as array buffer
+    const fileContent = await zipBlob.arrayBuffer();
+    const base64File = btoa(
+      new Uint8Array(fileContent)
+        .reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    const multipartRequestBody =
+      delimiter +
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+      JSON.stringify(metadata) +
+      delimiter +
+      'Content-Type: ' + contentType + '\r\n' +
+      'Content-Transfer-Encoding: base64\r\n' +
+      '\r\n' +
+      base64File +
+      close_delim;
+
+    // Upload with fetch
+    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token.access_token,
+        'Content-Type': 'multipart/related; boundary=' + boundary
       },
-      fields: 'id, name, modifiedTime'
+      body: multipartRequestBody
     });
 
-    console.log('Uploaded to Drive:', response.result);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Upload failed');
+    }
+
+    const result = await response.json();
+    console.log('Uploaded to Drive:', result);
 
     // Store file ID and timestamp
-    localStorage.setItem('lastDriveBackupId', response.result.id);
+    localStorage.setItem('lastDriveBackupId', result.id);
     localStorage.setItem('lastDriveBackupTime', new Date().toISOString());
 
-    return response.result;
+    return result;
   } catch (error) {
     console.error('Failed to upload to Drive:', error);
     throw error;
