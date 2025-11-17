@@ -404,10 +404,9 @@ export async function checkForNewerBackup() {
  */
 export async function checkAndOfferRestore() {
   try {
-    // Check if we have a valid token first (to avoid popup blockers)
-    const token = gapi?.client?.getToken();
-    if (!token) {
-      console.log('No Drive token available for auto-restore check');
+    // Check if gapi is loaded and we have a valid token (to avoid popup blockers)
+    if (typeof gapi === 'undefined' || !gapi.client || !gapi.client.getToken()) {
+      console.log('No Drive token available for auto-restore check (gapi not loaded or no token)');
       return; // Don't try to check without token (would trigger blocked popup)
     }
 
