@@ -2597,6 +2597,13 @@ function setupCanvasEvents() {
       return;
     }
 
+    // M - Multi-import
+    if (e.key === 'm' && !e.ctrlKey) {
+      e.preventDefault();
+      await createMultipleCardsFromText();
+      return;
+    }
+
     // V - Vertical arrangement (or G+V if 'g' is held)
     if (e.key === 'v' && !e.ctrlKey) {
       e.preventDefault();
@@ -2975,7 +2982,7 @@ Tredje kortet med kommentar
       </textarea>
     </div>
 
-    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+    <div style="display: flex; gap: 12px; justify-content: space-between; align-items: center;">
       <button id="cancelMultiImport" style="
         padding: 10px 20px;
         border: 2px solid var(--border-color);
@@ -2987,17 +2994,30 @@ Tredje kortet med kommentar
         font-weight: 500;">
         Avbryt
       </button>
-      <button id="createMultiImport" style="
-        padding: 10px 20px;
-        border: none;
-        background: var(--accent-color);
-        color: white;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;">
-        Skapa kort
-      </button>
+      <div style="display: flex; gap: 12px;">
+        <button id="createWithGemini" style="
+          padding: 10px 20px;
+          border: 2px solid var(--accent-color);
+          background: transparent;
+          color: var(--accent-color);
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;">
+          ✨ Analysera med Gemini
+        </button>
+        <button id="createMultiImport" style="
+          padding: 10px 20px;
+          border: none;
+          background: var(--accent-color);
+          color: white;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;">
+          Skapa kort
+        </button>
+      </div>
     </div>
   `;
 
@@ -3014,6 +3034,119 @@ Tredje kortet med kommentar
     };
 
     document.getElementById('cancelMultiImport').onclick = cleanup;
+
+    // Gemini analysis button
+    document.getElementById('createWithGemini').onclick = async () => {
+      const text = textarea.value.trim();
+      if (!text) {
+        alert('Klistra in text först!');
+        return;
+      }
+
+      // Get API key
+      const { readImageWithGemini } = await import('./gemini.js');
+      const apiKeyFromStorage = localStorage.getItem('googleAiApiKey');
+
+      if (!apiKeyFromStorage) {
+        alert('Du behöver ange din Google AI API-nyckel först. Läs ett bildkort med AI för att ange den.');
+        return;
+      }
+
+      // Show loading state
+      const geminiBtn = document.getElementById('createWithGemini');
+      const originalText = geminiBtn.textContent;
+      geminiBtn.textContent = '✨ Analyserar...';
+      geminiBtn.disabled = true;
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKeyFromStorage}`;
+
+        const prompt = `Analysera följande text och plocka ut de viktigaste citatena, insikterna eller informationen.
+
+Skapa 3-8 korta kort (beroende på textens längd och innehåll).
+
+För varje kort:
+- "text": Ett nyckelcitat eller viktig punkt (max 2-3 meningar, citera exakt om möjligt)
+- "comments": En kort kommentar om varför detta är viktigt eller kontext (1 mening)
+- "tags": 2-4 relevanta taggar (ämne, kategori, koncept)
+
+VIKTIGT: Svara ENDAST med en JSON-array enligt detta format:
+
+[
+  {
+    "text": "Nyckelcitat här...",
+    "comments": "Förklaring varför detta är viktigt",
+    "tags": ["tag1", "tag2", "tag3"]
+  }
+]
+
+Text att analysera:
+
+${text}`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const rawText = data.candidates[0].content.parts[0].text;
+
+        let cards;
+        try {
+          const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/) || rawText.match(/```\s*([\s\S]*?)\s*```/);
+          const jsonText = jsonMatch ? jsonMatch[1] : rawText;
+          cards = JSON.parse(jsonText.trim());
+        } catch (parseError) {
+          console.error('Failed to parse Gemini response:', parseError);
+          throw new Error('Kunde inte tolka Geminis svar. Försök igen.');
+        }
+
+        if (!Array.isArray(cards)) {
+          throw new Error('Gemini returnerade inte en array av kort.');
+        }
+
+        // Create cards
+        const allCards = await getAllCards();
+        const maxY = allCards.length > 0 ? Math.max(...allCards.map(c => c.position?.y || 0)) : 0;
+        const startPosition = {
+          x: 300,
+          y: maxY + 200
+        };
+
+        for (let index = 0; index < cards.length; index++) {
+          const cardData = cards[index];
+          const position = {
+            x: startPosition.x + (index % 5) * 50,
+            y: startPosition.y + Math.floor(index / 5) * 250
+          };
+
+          await addCard({
+            text: cardData.text || '',
+            tags: cardData.tags || [],
+            comments: cardData.comments || '',
+            position: position
+          });
+        }
+
+        cleanup();
+        await reloadCanvas();
+        alert(`✅ Gemini skapade ${cards.length} kort från texten!`);
+
+      } catch (error) {
+        console.error('Gemini error:', error);
+        alert(`❌ Fel: ${error.message}`);
+        geminiBtn.textContent = originalText;
+        geminiBtn.disabled = false;
+      }
+    };
 
     document.getElementById('createMultiImport').onclick = async () => {
       const text = textarea.value.trim();
@@ -3844,11 +3977,8 @@ function showCommandPalette() {
     { key: 'Z', icon: '📚', name: 'Importera Zotero HTML', desc: 'Importera anteckningar från Zotero HTML-export', action: async () => {
       await importFromZoteroHTML();
     }},
-    { key: 'M', icon: '📝📝', name: 'Skapa flera kort från text', desc: 'Klistra in text och skapa flera kort (separera med tom rad, # för taggar, & för kommentar)', action: async () => {
+    { key: 'M', icon: '📝📝', name: 'Skapa flera kort från text', desc: 'Klistra in text och skapa kort manuellt eller med Gemini AI', action: async () => {
       await createMultipleCardsFromText();
-    }},
-    { key: 'G', icon: '✨📝', name: 'Skapa kort med Gemini', desc: 'Gemini analyserar text och plockar ut nyckelcitat med taggar och kommentarer', action: async () => {
-      await createCardsFromTextWithGemini();
     }},
     { key: 'Delete', icon: '🗑️', name: 'Ta bort kort', desc: 'Ta bort markerade kort', action: async () => {
       const selectedNodes = layer.find('.selected');
