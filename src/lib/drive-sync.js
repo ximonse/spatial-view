@@ -117,33 +117,45 @@ async function getGoogleClientId() {
 }
 
 /**
- * Initialize Google API client and authenticate
+ * Initialize Google API client and authenticate with new GIS
  */
 async function initGoogleDrive() {
   const clientId = await getGoogleClientId();
   if (!clientId) return null;
 
-  // Load Google API client
+  // Load Google API client and GIS
   if (!window.gapi) {
     await loadGoogleAPI();
   }
+  if (!window.google?.accounts) {
+    await loadGoogleGIS();
+  }
 
   return new Promise((resolve, reject) => {
-    gapi.load('client:auth2', async () => {
+    gapi.load('client', async () => {
       try {
         await gapi.client.init({
-          clientId: clientId,
-          scope: SCOPES,
           discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
         });
 
-        const authInstance = gapi.auth2.getAuthInstance();
+        // Get access token using new GIS
+        const tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: SCOPES,
+          callback: (response) => {
+            if (response.error) {
+              reject(response);
+            } else {
+              // Set the access token
+              gapi.client.setToken({access_token: response.access_token});
+              resolve(gapi.client);
+            }
+          }
+        });
 
-        if (!authInstance.isSignedIn.get()) {
-          await authInstance.signIn();
-        }
+        // Request access token
+        tokenClient.requestAccessToken({prompt: ''});
 
-        resolve(gapi.client);
       } catch (error) {
         console.error('Failed to initialize Google Drive:', error);
         reject(error);
@@ -159,6 +171,19 @@ function loadGoogleAPI() {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = 'https://apis.google.com/js/api.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Load Google Identity Services script
+ */
+function loadGoogleGIS() {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
     script.onload = resolve;
     script.onerror = reject;
     document.head.appendChild(script);
