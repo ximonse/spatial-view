@@ -312,18 +312,30 @@ export async function uploadBackupToDrive(zipBlob) {
  */
 export async function getLatestBackupFromDrive() {
   try {
+    console.log('[Drive] Initializing Google Drive...');
     const client = await initGoogleDrive();
-    if (!client) return null;
+    if (!client) {
+      console.log('[Drive] No client available');
+      return null;
+    }
 
+    console.log('[Drive] Getting or creating folder...');
     const folderId = await getOrCreateFolder(client);
+    console.log('[Drive] Folder ID:', folderId);
 
     // List all backup files, sorted by modification time
+    console.log('[Drive] Listing backup files...');
     const response = await client.drive.files.list({
       q: `'${folderId}' in parents and name contains 'spatial-view-backup' and trashed=false`,
       orderBy: 'modifiedTime desc',
       fields: 'files(id, name, modifiedTime, size)',
       pageSize: 1
     });
+
+    console.log('[Drive] Found files:', response.result.files.length);
+    if (response.result.files.length > 0) {
+      console.log('[Drive] Latest backup:', response.result.files[0]);
+    }
 
     if (response.result.files.length === 0) {
       return null;
@@ -380,18 +392,31 @@ export async function downloadBackupFromDrive(fileId) {
 export async function checkForNewerBackup() {
   try {
     const latestDrive = await getLatestBackupFromDrive();
-    if (!latestDrive) return null;
+    if (!latestDrive) {
+      console.log('[Drive] No backups found in Drive');
+      return null;
+    }
 
     const lastLocalSync = localStorage.getItem('lastDriveBackupTime');
-    if (!lastLocalSync) return latestDrive; // No local sync yet
+    console.log('[Drive] Last local sync:', lastLocalSync);
+    console.log('[Drive] Latest Drive backup:', latestDrive.modifiedTime);
+
+    if (!lastLocalSync) {
+      console.log('[Drive] No local sync history - returning latest backup');
+      return latestDrive; // No local sync yet
+    }
 
     const driveTime = new Date(latestDrive.modifiedTime);
     const localTime = new Date(lastLocalSync);
 
+    console.log('[Drive] Comparing times - Drive:', driveTime, 'Local:', localTime);
+
     if (driveTime > localTime) {
+      console.log('[Drive] Drive backup is newer!');
       return latestDrive;
     }
 
+    console.log('[Drive] Local is up to date');
     return null;
   } catch (error) {
     console.error('Failed to check for newer backup:', error);
