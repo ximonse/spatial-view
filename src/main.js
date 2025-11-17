@@ -105,6 +105,30 @@ async function init() {
     await renderColumnView();
   }
 
+  // Check for newer backup in Google Drive (if configured)
+  setTimeout(async () => {
+    try {
+      const { checkAndOfferRestore } = await import('./lib/drive-sync.js');
+      await checkAndOfferRestore();
+    } catch (error) {
+      // Silently fail if Drive sync not configured
+      console.log('Drive sync not available:', error.message);
+    }
+  }, 2000); // Wait 2 seconds after init to avoid blocking startup
+
+  // Auto-sync to Drive on page close
+  window.addEventListener('beforeunload', async (e) => {
+    const autoSync = localStorage.getItem('autoSyncOnClose');
+    if (autoSync === 'true') {
+      try {
+        const { syncWithDrive } = await import('./lib/drive-sync.js');
+        await syncWithDrive();
+      } catch (error) {
+        console.error('Auto-sync on close failed:', error);
+      }
+    }
+  });
+
   console.log('Spatial View ready!');
 }
 
@@ -1163,6 +1187,76 @@ async function handleDownloadBackup() {
 }
 
 /**
+ * Restore from blob (used by Drive sync)
+ */
+async function handleRestoreFromBlob(blob) {
+  try {
+    const JSZip = (await import('jszip')).default;
+    const { createCard } = await import('./lib/storage.js');
+    const { reloadCanvas } = await import('./lib/canvas.js');
+
+    console.log('Reading backup zip...');
+
+    // Read zip file
+    const arrayBuffer = await blob.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+
+    // Extract cards.json
+    const cardsJsonFile = zip.file('cards.json');
+    if (!cardsJsonFile) {
+      throw new Error('Kunde inte hitta cards.json i backup-filen');
+    }
+
+    const cardsJsonText = await cardsJsonFile.async('text');
+    const jsonData = JSON.parse(cardsJsonText);
+
+    if (!jsonData.cards || !Array.isArray(jsonData.cards)) {
+      throw new Error('Ogiltig backup-fil: cards saknas');
+    }
+
+    // Extract images
+    const imagesFolder = zip.folder('images');
+    const imageFiles = {};
+
+    if (imagesFolder) {
+      const files = Object.keys(zip.files).filter(name => name.startsWith('images/'));
+      for (const filename of files) {
+        const file = zip.file(filename);
+        if (file) {
+          const base64Data = await file.async('base64');
+          const cardId = filename.match(/card_(\d+)\.png/)?.[1];
+          if (cardId) {
+            imageFiles[cardId] = `data:image/png;base64,${base64Data}`;
+          }
+        }
+      }
+    }
+
+    // Import all cards
+    let importedCount = 0;
+    for (const cardData of jsonData.cards) {
+      if (cardData.id && imageFiles[cardData.id]) {
+        cardData.image = { base64: imageFiles[cardData.id] };
+      }
+
+      const { id, ...cardWithoutId } = cardData;
+      await createCard(cardWithoutId);
+      importedCount++;
+    }
+
+    // Reload canvas
+    await reloadCanvas();
+
+    console.log(`Restored ${importedCount} cards from blob`);
+    return importedCount;
+
+  } catch (error) {
+    console.error('Restore from blob failed:', error);
+    throw error;
+  }
+}
+
+/**
  * Handle restore from backup zip
  */
 async function handleRestoreBackup() {
@@ -1272,6 +1366,49 @@ async function handleRestoreBackup() {
 }
 
 /**
+ * Handle Google Drive sync
+ */
+async function handleDriveSync() {
+  try {
+    const { syncWithDrive } = await import('./lib/drive-sync.js');
+
+    const statusDiv = document.createElement('div');
+    statusDiv.textContent = '☁️ Synkar med Google Drive...';
+    statusDiv.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      z-index: 10001;
+      font-family: sans-serif;
+    `;
+    document.body.appendChild(statusDiv);
+
+    const result = await syncWithDrive();
+
+    if (result.success) {
+      statusDiv.textContent = '✅ ' + result.message;
+      statusDiv.style.background = '#27ae60';
+    } else {
+      statusDiv.textContent = '❌ ' + result.message;
+      statusDiv.style.background = '#c0392b';
+    }
+
+    setTimeout(() => {
+      statusDiv.remove();
+    }, 3000);
+
+  } catch (error) {
+    console.error('Drive sync failed:', error);
+    alert('Synk misslyckades: ' + error.message);
+  }
+}
+
+/**
  * Handle search input
  */
 async function handleSearch(event) {
@@ -1314,5 +1451,7 @@ if (import.meta.env.DEV) {
   window.__SPATIAL_VIEW__ = state;
 }
 
-// Export restore function for canvas.js
+// Export restore and sync functions for canvas.js and drive-sync.js
 window.handleRestoreBackup = handleRestoreBackup;
+window.handleRestoreFromBlob = handleRestoreFromBlob;
+window.handleDriveSync = handleDriveSync;

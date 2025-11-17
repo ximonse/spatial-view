@@ -2562,6 +2562,16 @@ function setupCanvasEvents() {
       return;
     }
 
+    // Y - Sync with Google Drive
+    if (e.key === 'y' && !e.ctrlKey) {
+      e.preventDefault();
+      if (window.handleDriveSync) {
+        window.handleDriveSync();
+        console.log('Drive sync initiated');
+      }
+      return;
+    }
+
     // K - Toggle view
     if (e.key === 'k') {
       e.preventDefault();
@@ -4362,6 +4372,11 @@ function showCommandPalette() {
     { key: 'R', icon: '📥', name: 'Återställ från backup', desc: 'Återställ kort och bilder från zip-backup', action: async () => {
       if (window.handleRestoreBackup) {
         window.handleRestoreBackup();
+      }
+    }},
+    { key: 'Y', icon: '☁️', name: 'Synka med Google Drive', desc: 'Ladda upp backup till Google Drive', action: async () => {
+      if (window.handleDriveSync) {
+        await window.handleDriveSync();
       }
     }},
     { key: 'Z', icon: '📚', name: 'Importera Zotero HTML', desc: 'Importera anteckningar från Zotero HTML-export', action: async () => {
