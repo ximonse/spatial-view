@@ -2923,6 +2923,425 @@ export async function importImage() {
 }
 
 /**
+ * Create multiple cards from pasted text
+ * Format: blocks separated by double newlines
+ * - Last/second-to-last line starting with # = tags
+ * - Last line starting with & = comment
+ */
+export async function createMultipleCardsFromText() {
+  // Show dialog to paste text
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  `;
+
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  `;
+
+  dialog.innerHTML = `
+    <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 20px; font-weight: 600;">
+      Skapa flera kort från text
+    </h3>
+
+    <div style="margin-bottom: 16px; font-size: 14px; color: var(--text-secondary);">
+      <strong>Format:</strong><br>
+      • Separera kort med dubbel radbrytning (tom rad)<br>
+      • Sista/näst sista rad börjar med <code>#</code> → taggar<br>
+      • Sista rad börjar med <code>&</code> → kommentar
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <textarea id="multiImportText"
+        placeholder="Första kortet här
+
+Andra kortet här
+#tag1 #tag2
+
+Tredje kortet med kommentar
+& Detta är en kommentar"
+        style="width: 100%; height: 300px; padding: 12px; font-size: 14px;
+               border: 2px solid var(--border-color); border-radius: 8px;
+               background: var(--bg-secondary); color: var(--text-primary);
+               font-family: 'Courier New', monospace; resize: vertical; box-sizing: border-box;">
+      </textarea>
+    </div>
+
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+      <button id="cancelMultiImport" style="
+        padding: 10px 20px;
+        border: 2px solid var(--border-color);
+        background: transparent;
+        color: var(--text-primary);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;">
+        Avbryt
+      </button>
+      <button id="createMultiImport" style="
+        padding: 10px 20px;
+        border: none;
+        background: var(--accent-color);
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;">
+        Skapa kort
+      </button>
+    </div>
+  `;
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  const textarea = document.getElementById('multiImportText');
+  textarea.focus();
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      overlay.remove();
+      resolve();
+    };
+
+    document.getElementById('cancelMultiImport').onclick = cleanup;
+
+    document.getElementById('createMultiImport').onclick = async () => {
+      const text = textarea.value.trim();
+      if (!text) {
+        cleanup();
+        return;
+      }
+
+      // Split on double line breaks
+      const blocks = text.split(/\n\s*\n/).filter(block => block.trim());
+
+      console.log(`Creating ${blocks.length} cards from text blocks`);
+
+      const cards = await getAllCards();
+      const maxY = cards.length > 0 ? Math.max(...cards.map(c => c.position?.y || 0)) : 0;
+      const startPosition = {
+        x: 300,
+        y: maxY + 200
+      };
+
+      let createdCount = 0;
+
+      for (let index = 0; index < blocks.length; index++) {
+        const block = blocks[index];
+        const lines = block.trim().split('\n').map(l => l.trim());
+
+        let cardText = '';
+        let tags = [];
+        let comments = '';
+
+        // Check last line for comment (starts with &)
+        const lastLine = lines[lines.length - 1];
+        let textLines = [...lines];
+
+        if (lastLine.startsWith('&')) {
+          comments = lastLine.substring(1).trim();
+          textLines = lines.slice(0, -1);
+        }
+
+        // Check last or second-to-last line for tags (starts with #)
+        const checkLine = textLines[textLines.length - 1];
+        if (checkLine && checkLine.startsWith('#')) {
+          const tagMatches = checkLine.match(/#\w+/g);
+          if (tagMatches) {
+            tags = tagMatches.map(tag => tag.substring(1));
+            textLines = textLines.slice(0, -1);
+          }
+        }
+
+        cardText = textLines.join('\n').trim();
+
+        // Skip empty cards
+        if (!cardText && tags.length === 0) continue;
+
+        // Create card
+        const position = {
+          x: startPosition.x + (index % 5) * 50,
+          y: startPosition.y + Math.floor(index / 5) * 250
+        };
+
+        await addCard({
+          text: cardText,
+          tags: tags,
+          comments: comments,
+          position: position
+        });
+
+        createdCount++;
+      }
+
+      console.log(`Multi-import complete: ${createdCount} cards created`);
+
+      cleanup();
+      await reloadCanvas();
+
+      // Show success message
+      alert(`✅ Skapade ${createdCount} kort från texten!`);
+    };
+
+    // Escape to close
+    overlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        cleanup();
+      }
+    });
+  });
+}
+
+/**
+ * Create cards from text using Gemini to extract key quotes
+ */
+export async function createCardsFromTextWithGemini() {
+  const { getGoogleAIAPIKey } = await import('./gemini.js');
+
+  const apiKey = await getGoogleAIAPIKey();
+  if (!apiKey) {
+    console.log('Gemini text splitting cancelled: No API key provided.');
+    return;
+  }
+
+  // Show dialog to paste text
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  `;
+
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  `;
+
+  dialog.innerHTML = `
+    <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 20px; font-weight: 600;">
+      ✨ Skapa kort från text med Gemini
+    </h3>
+
+    <div style="margin-bottom: 16px; font-size: 14px; color: var(--text-secondary);">
+      Klistra in lång text nedan. Gemini kommer analysera texten och plocka ut nyckelcitat,
+      lägga till kommentarer och taggar automatiskt.
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <textarea id="geminiSplitText"
+        placeholder="Klistra in din text här..."
+        style="width: 100%; height: 300px; padding: 12px; font-size: 14px;
+               border: 2px solid var(--border-color); border-radius: 8px;
+               background: var(--bg-secondary); color: var(--text-primary);
+               font-family: sans-serif; resize: vertical; box-sizing: border-box;">
+      </textarea>
+    </div>
+
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+      <button id="cancelGeminiSplit" style="
+        padding: 10px 20px;
+        border: 2px solid var(--border-color);
+        background: transparent;
+        color: var(--text-primary);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;">
+        Avbryt
+      </button>
+      <button id="createGeminiSplit" style="
+        padding: 10px 20px;
+        border: none;
+        background: var(--accent-color);
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;">
+        ✨ Analysera med Gemini
+      </button>
+    </div>
+  `;
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  const textarea = document.getElementById('geminiSplitText');
+  textarea.focus();
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      overlay.remove();
+      resolve();
+    };
+
+    document.getElementById('cancelGeminiSplit').onclick = cleanup;
+
+    document.getElementById('createGeminiSplit').onclick = async () => {
+      const text = textarea.value.trim();
+      if (!text) {
+        cleanup();
+        return;
+      }
+
+      // Show loading state
+      const createBtn = document.getElementById('createGeminiSplit');
+      const originalText = createBtn.textContent;
+      createBtn.textContent = '✨ Analyserar...';
+      createBtn.disabled = true;
+
+      try {
+        // Call Gemini API
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+        const prompt = `Analysera följande text och plocka ut de viktigaste citatena, insikterna eller informationen.
+
+Skapa 3-8 korta kort (beroende på textens längd och innehåll).
+
+För varje kort:
+- "text": Ett nyckelcitat eller viktig punkt (max 2-3 meningar, citera exakt om möjligt)
+- "comments": En kort kommentar om varför detta är viktigt eller kontext (1 mening)
+- "tags": 2-4 relevanta taggar (ämne, kategori, koncept)
+
+VIKTIGT: Svara ENDAST med en JSON-array enligt detta format:
+
+[
+  {
+    "text": "Nyckelcitat här...",
+    "comments": "Förklaring varför detta är viktigt",
+    "tags": ["tag1", "tag2", "tag3"]
+  },
+  {
+    "text": "Nästa viktiga citat...",
+    "comments": "Kontext eller förklaring",
+    "tags": ["tag1", "tag2"]
+  }
+]
+
+Text att analysera:
+
+${text}`;
+
+        const payload = {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        };
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const rawText = data.candidates[0].content.parts[0].text;
+
+        // Parse JSON from response
+        let cards;
+        try {
+          const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/) || rawText.match(/```\s*([\s\S]*?)\s*```/);
+          const jsonText = jsonMatch ? jsonMatch[1] : rawText;
+          cards = JSON.parse(jsonText.trim());
+        } catch (parseError) {
+          console.error('Failed to parse Gemini response:', parseError);
+          throw new Error('Kunde inte tolka Geminis svar. Försök igen.');
+        }
+
+        if (!Array.isArray(cards)) {
+          throw new Error('Gemini returnerade inte en array av kort.');
+        }
+
+        // Create cards
+        const allCards = await getAllCards();
+        const maxY = allCards.length > 0 ? Math.max(...allCards.map(c => c.position?.y || 0)) : 0;
+        const startPosition = {
+          x: 300,
+          y: maxY + 200
+        };
+
+        for (let index = 0; index < cards.length; index++) {
+          const cardData = cards[index];
+
+          const position = {
+            x: startPosition.x + (index % 5) * 50,
+            y: startPosition.y + Math.floor(index / 5) * 250
+          };
+
+          await addCard({
+            text: cardData.text || '',
+            tags: cardData.tags || [],
+            comments: cardData.comments || '',
+            position: position
+          });
+        }
+
+        console.log(`Gemini text split complete: ${cards.length} cards created`);
+
+        cleanup();
+        await reloadCanvas();
+
+        alert(`✅ Gemini skapade ${cards.length} kort från texten!`);
+
+      } catch (error) {
+        console.error('Gemini text splitting error:', error);
+        alert(`❌ Fel: ${error.message}`);
+        createBtn.textContent = originalText;
+        createBtn.disabled = false;
+      }
+    };
+
+    // Escape to close
+    overlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        cleanup();
+      }
+    });
+  });
+}
+
+/**
  * Map Zotero highlight color to card color
  */
 function mapZoteroColorToCard(bgColorStyle) {
@@ -3434,6 +3853,12 @@ function showCommandPalette() {
     }},
     { key: 'Z', icon: '📚', name: 'Importera Zotero HTML', desc: 'Importera anteckningar från Zotero HTML-export', action: async () => {
       await importFromZoteroHTML();
+    }},
+    { key: 'M', icon: '📝📝', name: 'Skapa flera kort från text', desc: 'Klistra in text och skapa flera kort (separera med tom rad, # för taggar, & för kommentar)', action: async () => {
+      await createMultipleCardsFromText();
+    }},
+    { key: 'G', icon: '✨📝', name: 'Skapa kort med Gemini', desc: 'Gemini analyserar text och plockar ut nyckelcitat med taggar och kommentarer', action: async () => {
+      await createCardsFromTextWithGemini();
     }},
     { key: 'Delete', icon: '🗑️', name: 'Ta bort kort', desc: 'Ta bort markerade kort', action: async () => {
       const selectedNodes = layer.find('.selected');
