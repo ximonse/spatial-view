@@ -270,16 +270,14 @@ export async function readImageWithGemini(cardId) {
             parsedData = { text: rawText, hashtags: [] };
         }
 
-        const hashtagText = (parsedData.hashtags || []).map(tag => tag.startsWith('#') ? tag : '#' + tag).join(' ');
         const mainContent = parsedData.text || parsedData.description || '';
-        const newBackText = (mainContent + '\n\n' + hashtagText).trim();
 
         const existingTags = card.tags || [];
         const newTags = (parsedData.hashtags || []).map(tag => tag.replace('#', ''));
         const mergedTags = [...new Set([...existingTags, ...newTags])];
 
         const updates = {
-            backText: newBackText,
+            text: mainContent,  // Put extracted text in main text field
             tags: mergedTags,
             geminiMetadata: parsedData.metadata || {} // Store metadata
         };
