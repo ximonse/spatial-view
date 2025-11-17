@@ -233,7 +233,12 @@ export async function uploadBackupToDrive(zipBlob) {
     if (!client) return null;
 
     const folderId = await getOrCreateFolder(client);
-    const fileName = `spatial-view-backup-${new Date().toISOString().split('T')[0]}.zip`;
+
+    // Generate filename with date and time
+    const now = new Date();
+    const date = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const time = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+    const fileName = `spatial-view-backup-${date}_${time}.zip`;
 
     // Get access token
     const token = gapi.client.getToken();

@@ -1168,9 +1168,11 @@ async function handleDownloadBackup() {
     const a = document.createElement('a');
     a.href = url;
 
-    // Create filename with date
-    const date = new Date().toISOString().split('T')[0];
-    a.download = `spatial-view-backup-${date}.zip`;
+    // Create filename with date and time
+    const now = new Date();
+    const date = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const time = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+    a.download = `spatial-view-backup-${date}_${time}.zip`;
 
     document.body.appendChild(a);
     a.click();
