@@ -250,13 +250,11 @@ function renderCard(cardData) {
                                   e.evt.clientY || e.evt.touches[0].clientY);
         } else {
           // Single card: open editor
-          if (cardData.image && cardData.flipped) {
-            createInlineEditor(cardData.id, this, cardData.backText || '', true);
-          } else if (cardData.image) {
-            // For image cards (front side), flip them
-            await flipCard(cardData.id);
+          if (cardData.image) {
+            // For image cards, open edit dialog (works for both front and flipped)
+            openEditDialog(cardData.id);
           } else {
-            // For text cards, open editor
+            // For text cards, open inline editor
             createInlineEditor(cardData.id, this, cardData.text || '', false);
           }
         }
@@ -560,10 +558,64 @@ function renderImageCard(group, cardData) {
     group.setAttr('cardHeight', height);
 
     if (isFlipped) {
-      // Show back side (text)
+      // Show back side (read-only view with all text)
+      let currentY = 16;
+
+      // Main text (backText)
+      const mainText = new Konva.Text({
+        text: cardData.backText || 'Dubbelklicka för att redigera...',
+        x: 16,
+        y: currentY,
+        width: width - 32,
+        fontSize: 16,
+        fontFamily: 'sans-serif',
+        fill: isDark ? '#e0e0e0' : '#1a1a1a',
+        wrap: 'word',
+        align: 'left'
+      });
+      currentY += mainText.height();
+
+      // Tags (if any)
+      let tagsText = null;
+      if (cardData.tags && cardData.tags.length > 0) {
+        currentY += 12; // Gap before tags
+        tagsText = new Konva.Text({
+          text: cardData.tags.map(tag => '#' + tag).join(' '),
+          x: 16,
+          y: currentY,
+          width: width - 32,
+          fontSize: 12,
+          fontFamily: 'sans-serif',
+          fill: isDark ? '#80b3ff' : '#0066cc',
+          wrap: 'word'
+        });
+        currentY += tagsText.height();
+      }
+
+      // Comments (if any)
+      let commentsText = null;
+      if (cardData.comments) {
+        currentY += 8; // Gap before comments
+        commentsText = new Konva.Text({
+          text: cardData.comments,
+          x: 16,
+          y: currentY,
+          width: width - 32,
+          fontSize: 12,
+          fontFamily: 'sans-serif',
+          fontStyle: 'italic',
+          fill: isDark ? '#a0a0a0' : '#666666',
+          wrap: 'word'
+        });
+        currentY += commentsText.height();
+      }
+
+      // Calculate total height
+      const totalHeight = currentY + 16; // Add bottom padding
+
       const background = new Konva.Rect({
         width: width,
-        height: height,
+        height: Math.max(height, totalHeight),
         fill: isEink ? '#ffffff' : (isDark ? '#2d3748' : '#fffacd'),
         stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#e0e0e0'),
         strokeWidth: 1,
@@ -574,27 +626,39 @@ function renderImageCard(group, cardData) {
         shadowOffset: { x: 0, y: isEink ? 0 : 2 }
       });
 
-      const text = new Konva.Text({
-        text: cardData.backText || 'Dubbelklicka för att redigera baksidan...',
-        x: 16,
-        y: 16,
-        width: width - 32,
-        height: height - 32,
-        fontSize: 16,
-        fontFamily: 'sans-serif',
-        fill: isDark ? '#e0e0e0' : '#1a1a1a',
-        wrap: 'word',
-        align: 'left',
-        verticalAlign: 'top'
-      });
-
       group.add(background);
-      group.add(text);
+      group.add(mainText);
+      if (tagsText) group.add(tagsText);
+      if (commentsText) group.add(commentsText);
     } else {
       // Show front side (image)
+
+      // Check if we have comments to display
+      let commentsText = null;
+      let totalHeight = height;
+
+      if (cardData.comments) {
+        // Create comments text (will be positioned below image)
+        commentsText = new Konva.Text({
+          text: cardData.comments,
+          x: 8,
+          y: height + 8, // 8px gap after image
+          width: width - 16,
+          fontSize: 12,
+          fontFamily: 'sans-serif',
+          fontStyle: 'italic',
+          fill: isDark ? '#a0a0a0' : '#666666',
+          wrap: 'word',
+          ellipsis: false
+        });
+
+        // Update total height to include comments
+        totalHeight = height + 8 + commentsText.height() + 8; // image + gap + comments + bottom padding
+      }
+
       const background = new Konva.Rect({
         width: width,
-        height: height,
+        height: totalHeight,
         fill: '#ffffff',
         stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#e0e0e0'),
         strokeWidth: 1,
@@ -618,6 +682,10 @@ function renderImageCard(group, cardData) {
 
       group.add(background);
       group.add(konvaImage);
+
+      if (commentsText) {
+        group.add(commentsText);
+      }
 
       // Tooltip on hover (show filename)
       group.on('mouseenter', function() {
@@ -757,6 +825,15 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
     <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 20px; font-weight: 600;">
       ${isImageBack ? 'Redigera baksida' : 'Redigera kort'}
     </h3>
+
+    ${card.image ? `
+    <div style="margin-bottom: 20px; text-align: center;">
+      <img src="${card.image.base64}"
+           style="max-width: 100%; max-height: 300px; border-radius: 8px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.15);"
+           alt="Kortbild">
+    </div>
+    ` : ''}
 
     <div style="margin-bottom: 16px;">
       <label style="display: block; margin-bottom: 8px; font-weight: 500;">Text:</label>
@@ -2215,13 +2292,8 @@ function setupCanvasEvents() {
 
       if (!card) return;
 
-      if (card.image) {
-        // Image card: always flip on double-click (toggle)
-        await flipCard(cardId);
-      } else {
-        // Text card: open edit dialog
-        openEditDialog(cardId);
-      }
+      // Both image cards and text cards: open edit dialog on double-click
+      openEditDialog(cardId);
     } else if (target === stage) {
       // Only create card if user hasn't been panning
       if (!stageTouchHasMoved) {
@@ -4332,17 +4404,17 @@ export async function showContextMenu(x, y, cardId, group) {
       },
       {
         label: '✏️ Redigera',
-        action: () => {
-          if (card && card.image) {
-            flipCard(cardId);
-          } else {
-            openEditDialog(cardId);
-          }
-        }
+        action: () => openEditDialog(cardId)
       }
     ];
 
     if (card && card.image) {
+      // Add flip option for image cards
+      menuItems.push({
+        label: card.flipped ? '🔄 Visa bild' : '🔄 Visa text',
+        action: () => flipCard(cardId)
+      });
+
       menuItems.push({
         label: '✨ Läs med AI',
         action: async () => {
