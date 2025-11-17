@@ -2552,6 +2552,16 @@ function setupCanvasEvents() {
       return;
     }
 
+    // R - Restore from backup zip
+    if (e.key === 'r' && !e.ctrlKey) {
+      e.preventDefault();
+      if (window.handleRestoreBackup) {
+        window.handleRestoreBackup();
+        console.log('Restore backup initiated');
+      }
+      return;
+    }
+
     // K - Toggle view
     if (e.key === 'k') {
       e.preventDefault();
@@ -4347,6 +4357,11 @@ function showCommandPalette() {
       const downloadBtn = document.getElementById('btn-download');
       if (downloadBtn) {
         downloadBtn.click();
+      }
+    }},
+    { key: 'R', icon: '📥', name: 'Återställ från backup', desc: 'Återställ kort och bilder från zip-backup', action: async () => {
+      if (window.handleRestoreBackup) {
+        window.handleRestoreBackup();
       }
     }},
     { key: 'Z', icon: '📚', name: 'Importera Zotero HTML', desc: 'Importera anteckningar från Zotero HTML-export', action: async () => {

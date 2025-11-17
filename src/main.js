@@ -1163,6 +1163,115 @@ async function handleDownloadBackup() {
 }
 
 /**
+ * Handle restore from backup zip
+ */
+async function handleRestoreBackup() {
+  try {
+    // Create file input for zip
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.zip';
+
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const JSZip = (await import('jszip')).default;
+        const { createCard } = await import('./lib/storage.js');
+        const { reloadCanvas } = await import('./lib/canvas.js');
+
+        console.log('Reading backup zip...');
+
+        // Read zip file
+        const arrayBuffer = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(arrayBuffer);
+
+        // Extract cards.json
+        const cardsJsonFile = zip.file('cards.json');
+        if (!cardsJsonFile) {
+          throw new Error('Kunde inte hitta cards.json i backup-filen');
+        }
+
+        const cardsJsonText = await cardsJsonFile.async('text');
+        const jsonData = JSON.parse(cardsJsonText);
+
+        if (!jsonData.cards || !Array.isArray(jsonData.cards)) {
+          throw new Error('Ogiltig backup-fil: cards saknas');
+        }
+
+        console.log(`Restoring ${jsonData.cards.length} cards...`);
+
+        // Extract images
+        const imagesFolder = zip.folder('images');
+        const imageFiles = {};
+
+        if (imagesFolder) {
+          const files = Object.keys(zip.files).filter(name => name.startsWith('images/'));
+          for (const filename of files) {
+            const file = zip.file(filename);
+            if (file) {
+              const base64Data = await file.async('base64');
+              const cardId = filename.match(/card_(\d+)\.png/)?.[1];
+              if (cardId) {
+                imageFiles[cardId] = `data:image/png;base64,${base64Data}`;
+              }
+            }
+          }
+          console.log(`Extracted ${Object.keys(imageFiles).length} images`);
+        }
+
+        // Confirm before importing
+        const confirmed = confirm(
+          `Återställa backup från ${jsonData.exportDate || 'okänt datum'}?\n\n` +
+          `${jsonData.cards.length} kort kommer att importeras.\n\n` +
+          `OBS: Detta lägger till korten till befintliga kort (tar inte bort gamla).`
+        );
+
+        if (!confirmed) {
+          console.log('Restore cancelled by user');
+          return;
+        }
+
+        // Import all cards
+        let importedCount = 0;
+        for (const cardData of jsonData.cards) {
+          // Match image if exists
+          if (cardData.id && imageFiles[cardData.id]) {
+            cardData.image = {
+              base64: imageFiles[cardData.id]
+            };
+          }
+
+          // Remove the old ID so a new one is generated
+          const { id, ...cardWithoutId } = cardData;
+
+          await createCard(cardWithoutId);
+          importedCount++;
+        }
+
+        console.log(`Restored ${importedCount} cards`);
+
+        // Reload canvas
+        await reloadCanvas();
+
+        alert(`✅ Backup återställd!\n\n${importedCount} kort importerade.`);
+
+      } catch (error) {
+        console.error('Restore failed:', error);
+        alert('Misslyckades att återställa backup: ' + error.message);
+      }
+    };
+
+    input.click();
+
+  } catch (error) {
+    console.error('Failed to initiate restore:', error);
+    alert('Misslyckades att starta återställning: ' + error.message);
+  }
+}
+
+/**
  * Handle search input
  */
 async function handleSearch(event) {
@@ -1204,3 +1313,6 @@ if (document.readyState === 'loading') {
 if (import.meta.env.DEV) {
   window.__SPATIAL_VIEW__ = state;
 }
+
+// Export restore function for canvas.js
+window.handleRestoreBackup = handleRestoreBackup;

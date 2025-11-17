@@ -64,10 +64,12 @@ När du klickar på "SPATIAL VIEW":
   - 🔍 Sök (Boolean search)
 - Tips-sektion
 
-### ✅ Backup-funktion
-**Knapp:** 💾 Backup i toolbar
-**Kommando:** B i kommandopaletten
+### ✅ Backup & Restore
+**Backup-knapp:** 💾 Backup i toolbar
+**Backup-kommando:** B i kommandopaletten
+**Restore-kommando:** R i kommandopaletten
 
+**Ladda ner backup (B):**
 Laddar ner zip-fil med:
 - `cards.json`: All kort-data (position, text, tags, etc)
 - `images/`: Alla bilder från korten
@@ -75,6 +77,12 @@ Laddar ner zip-fil med:
   - Base64 PNG-data
 
 Filnamn: `spatial-view-backup-YYYY-MM-DD.zip`
+
+**Återställ från backup (R):**
+- Välj en tidigare nedladdad backup-zip
+- Importerar alla kort och bilder från backuppen
+- Lägger till korten till befintliga (tar inte bort gamla)
+- Bekräftar före import med datum och antal kort
 
 ## Befintliga funktioner
 
@@ -155,7 +163,8 @@ Arrangera markerade kort i mönster:
   - **Plain text**: Enkel oformaterad export
 - **Exportera JSON**: S i kommandopaletten
 - **Importera JSON**: L i kommandopaletten
-- **Backup**: B i kommandopaletten - alla kort + bilder som zip
+- **Backup (zip)**: B i kommandopaletten - alla kort + bilder som zip
+- **Återställ från backup**: R i kommandopaletten - återställ från zip-backup
 
 ### Teman
 Byt tema med 🎨-knappen eller kommandopaletten:
@@ -219,7 +228,8 @@ Byt tema med 🎨-knappen eller kommandopaletten:
 - `L`: Importera JSON
 - `M`: Multi-import (skapa flera kort från text)
 - `E`: Exportera till läsbar text (HTML/Markdown/Plain)
-- `B`: Ladda ner backup
+- `B`: Ladda ner backup (zip)
+- `R`: Återställ från backup (zip)
 
 ## AI-funktioner (Gemini)
 
