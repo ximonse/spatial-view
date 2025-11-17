@@ -12,7 +12,7 @@
  */
 
 import './styles.css';
-import { initCanvas, addNewCard, exportCanvas, importImage, searchCards, clearClipboard, deselectAllCards, createMultipleCardsFromText } from './lib/canvas.js';
+import { initCanvas, addNewCard, exportCanvas, importImage, searchCards, clearClipboard, deselectAllCards, createMultipleCardsFromText, exportToReadableText } from './lib/canvas.js';
 import { initStorage } from './lib/storage.js';
 
 // App state

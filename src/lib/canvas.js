@@ -2604,6 +2604,13 @@ function setupCanvasEvents() {
       return;
     }
 
+    // E - Export to readable text
+    if (e.key === 'e' && !e.ctrlKey) {
+      e.preventDefault();
+      await exportToReadableText();
+      return;
+    }
+
     // V - Vertical arrangement (or G+V if 'g' is held)
     if (e.key === 'v' && !e.ctrlKey) {
       e.preventDefault();
@@ -3233,6 +3240,371 @@ ${text}`;
       }
     });
   });
+}
+
+/**
+ * Export canvas to readable text (HTML, Markdown, or Plain text)
+ */
+export async function exportToReadableText() {
+  // Show format selection dialog
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  `;
+
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  `;
+
+  dialog.innerHTML = `
+    <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 20px; font-weight: 600;">
+      Exportera till läsbar text
+    </h3>
+
+    <div style="margin-bottom: 20px; font-size: 14px; color: var(--text-secondary);">
+      Välj vilket format du vill exportera till:
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+      <button class="export-format-btn" data-format="html" style="
+        padding: 16px;
+        border: 2px solid var(--border-color);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: left;
+        transition: all 0.2s;">
+        <div style="font-size: 16px; margin-bottom: 4px;">🌐 HTML</div>
+        <div style="font-size: 12px; opacity: 0.7;">Med färger och layout som kolumnvy</div>
+      </button>
+      <button class="export-format-btn" data-format="markdown" style="
+        padding: 16px;
+        border: 2px solid var(--border-color);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: left;
+        transition: all 0.2s;">
+        <div style="font-size: 16px; margin-bottom: 4px;">📝 Markdown</div>
+        <div style="font-size: 12px; opacity: 0.7;">Med formatering (kommentarer kursiverade)</div>
+      </button>
+      <button class="export-format-btn" data-format="txt" style="
+        padding: 16px;
+        border: 2px solid var(--border-color);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: left;
+        transition: all 0.2s;">
+        <div style="font-size: 16px; margin-bottom: 4px;">📄 Plain Text</div>
+        <div style="font-size: 12px; opacity: 0.7;">Enkel text utan formatering</div>
+      </button>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end;">
+      <button id="cancelExportText" style="
+        padding: 10px 20px;
+        border: 2px solid var(--border-color);
+        background: transparent;
+        color: var(--text-primary);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;">
+        Avbryt
+      </button>
+    </div>
+  `;
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      overlay.remove();
+      resolve();
+    };
+
+    document.getElementById('cancelExportText').onclick = cleanup;
+
+    // Add hover effects
+    const buttons = dialog.querySelectorAll('.export-format-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('mouseenter', () => {
+        btn.style.borderColor = 'var(--accent-color)';
+        btn.style.background = 'var(--bg-primary)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.borderColor = 'var(--border-color)';
+        btn.style.background = 'var(--bg-secondary)';
+      });
+      btn.addEventListener('click', async () => {
+        const format = btn.dataset.format;
+        cleanup();
+        await performExport(format);
+      });
+    });
+
+    overlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        cleanup();
+      }
+    });
+  });
+}
+
+async function performExport(format) {
+  const cards = await getAllCards();
+
+  if (cards.length === 0) {
+    alert('Inga kort att exportera!');
+    return;
+  }
+
+  let content = '';
+  let filename = '';
+  let mimeType = '';
+
+  const timestamp = new Date().toISOString().split('T')[0];
+
+  if (format === 'html') {
+    content = generateHTML(cards);
+    filename = `spatial-view-${timestamp}.html`;
+    mimeType = 'text/html';
+  } else if (format === 'markdown') {
+    content = generateMarkdown(cards);
+    filename = `spatial-view-${timestamp}.md`;
+    mimeType = 'text/markdown';
+  } else if (format === 'txt') {
+    content = generatePlainText(cards);
+    filename = `spatial-view-${timestamp}.txt`;
+    mimeType = 'text/plain';
+  }
+
+  // Download file
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  console.log(`Exported ${cards.length} cards to ${format.toUpperCase()}`);
+}
+
+function generateHTML(cards) {
+  const colorMap = {
+    'card-color-1': '#d4f2d4',
+    'card-color-2': '#ffe4b3',
+    'card-color-3': '#ffc1cc',
+    'card-color-4': '#fff7b3',
+    'card-color-5': '#f3e5f5',
+    'card-color-6': '#c7e7ff',
+    'card-color-7': '#e0e0e0',
+    'card-color-8': '#ffffff'
+  };
+
+  const cardsHTML = cards.map(card => {
+    const bgColor = colorMap[card.cardColor] || '#ffffff';
+    const text = card.text || '';
+    const comments = card.comments || '';
+    const tags = card.tags || [];
+    const backText = card.backText || '';
+
+    return `
+    <div class="card" style="background-color: ${bgColor};">
+      ${card.image ? '<div class="card-type">🖼️ Bildkort</div>' : ''}
+      <div class="card-text">${escapeHTML(text)}</div>
+      ${backText ? `<div class="card-backtext">${escapeHTML(backText)}</div>` : ''}
+      ${comments ? `<div class="card-comments">${escapeHTML(comments)}</div>` : ''}
+      ${tags.length > 0 ? `<div class="card-tags">${tags.map(tag => `<span class="tag">#${escapeHTML(tag)}</span>`).join(' ')}</div>` : ''}
+    </div>
+    `;
+  }).join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spatial View Export</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+    }
+    .card {
+      margin-bottom: 20px;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .card-type {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .card-text {
+      font-size: 16px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      margin-bottom: 8px;
+    }
+    .card-backtext {
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(0,0,0,0.1);
+    }
+    .card-comments {
+      font-size: 12px;
+      font-style: italic;
+      color: #666;
+      margin-top: 8px;
+    }
+    .card-tags {
+      margin-top: 12px;
+      font-size: 12px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      background: rgba(0, 102, 204, 0.1);
+      color: #0066cc;
+      border-radius: 4px;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Spatial View Export</h1>
+  <div class="cards">
+    ${cardsHTML}
+  </div>
+</body>
+</html>`;
+}
+
+function generateMarkdown(cards) {
+  const lines = ['# Spatial View Export\n'];
+
+  cards.forEach((card, index) => {
+    lines.push(`## Kort ${index + 1}`);
+
+    if (card.image) {
+      lines.push('*[Bildkort]*');
+    }
+
+    if (card.text) {
+      lines.push('');
+      lines.push(card.text);
+    }
+
+    if (card.backText) {
+      lines.push('');
+      lines.push('**Baksida:**');
+      lines.push(card.backText);
+    }
+
+    if (card.comments) {
+      lines.push('');
+      lines.push(`*${card.comments}*`);
+    }
+
+    if (card.tags && card.tags.length > 0) {
+      lines.push('');
+      lines.push(`Tags: ${card.tags.map(tag => `#${tag}`).join(' ')}`);
+    }
+
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+function generatePlainText(cards) {
+  const lines = ['SPATIAL VIEW EXPORT', '===================', ''];
+
+  cards.forEach((card, index) => {
+    lines.push(`KORT ${index + 1}`);
+    lines.push('-'.repeat(20));
+
+    if (card.image) {
+      lines.push('[Bildkort]');
+    }
+
+    if (card.text) {
+      lines.push('');
+      lines.push(card.text);
+    }
+
+    if (card.backText) {
+      lines.push('');
+      lines.push('Baksida:');
+      lines.push(card.backText);
+    }
+
+    if (card.comments) {
+      lines.push('');
+      lines.push(`Kommentar: ${card.comments}`);
+    }
+
+    if (card.tags && card.tags.length > 0) {
+      lines.push('');
+      lines.push(`Tags: ${card.tags.map(tag => `#${tag}`).join(' ')}`);
+    }
+
+    lines.push('');
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 /**
@@ -3963,6 +4335,9 @@ function showCommandPalette() {
     }},
     { key: 'S', icon: '💾', name: 'Exportera', desc: 'Exportera canvas till JSON-fil', action: async () => {
       await exportCanvas();
+    }},
+    { key: 'E', icon: '📄', name: 'Exportera till text', desc: 'Exportera till läsbar text (HTML, Markdown, TXT)', action: async () => {
+      await exportToReadableText();
     }},
     { key: 'L', icon: '📂', name: 'Importera JSON', desc: 'Importera kort från JSON-fil', action: async () => {
       await importCanvas();
