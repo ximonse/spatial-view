@@ -4379,6 +4379,21 @@ function showCommandPalette() {
         await window.handleDriveSync();
       }
     }},
+    { key: '', icon: '🔄', name: 'Återställ Drive-inställningar', desc: 'Rensa Google Drive OAuth och Client ID (fixa auth-problem)', action: async () => {
+      const confirmed = confirm('Vill du rensa alla Google Drive-inställningar?\n\n' +
+        'Detta tar bort:\n' +
+        '- OAuth Client ID\n' +
+        '- Senaste synk-tid\n' +
+        '- Backup-ID\n\n' +
+        'Du måste logga in igen nästa gång du synkar.');
+
+      if (confirmed) {
+        localStorage.removeItem('googleDriveClientId');
+        localStorage.removeItem('lastDriveBackupId');
+        localStorage.removeItem('lastDriveBackupTime');
+        alert('✅ Drive-inställningar rensade!\n\nTryck Y för att logga in igen.');
+      }
+    }},
     { key: 'Z', icon: '📚', name: 'Importera Zotero HTML', desc: 'Importera anteckningar från Zotero HTML-export', action: async () => {
       await importFromZoteroHTML();
     }},
