@@ -4170,8 +4170,16 @@ async function showGeminiAssistant() {
   // Focus input
   queryInput.focus();
 
+  // Escape key handler (declare before cleanup so we can reference it)
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      cleanup();
+    }
+  };
+
   // Cleanup function
   const cleanup = () => {
+    document.removeEventListener('keydown', handleEscape);
     if (overlay.parentNode) {
       document.body.removeChild(overlay);
     }
@@ -4182,6 +4190,9 @@ async function showGeminiAssistant() {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) cleanup();
   });
+
+  // Add Escape key listener
+  document.addEventListener('keydown', handleEscape);
 
   // Ask handler
   askBtn.addEventListener('click', async () => {
