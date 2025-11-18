@@ -4359,7 +4359,7 @@ function showCommandPalette() {
     { key: 'E', icon: '📄', name: 'Exportera till text', desc: 'Exportera till läsbar text (HTML, Markdown, TXT)', action: async () => {
       await exportToReadableText();
     }},
-    { key: 'L', icon: '📂', name: 'Importera JSON', desc: 'Importera kort från JSON-fil', action: async () => {
+    { key: 'L', icon: '📂', name: 'Ladda från fil', desc: 'Importera kort från JSON eller återställ från ZIP-backup', action: async () => {
       await importCanvas();
     }},
     { key: 'B', icon: '💾', name: 'Ladda ner backup', desc: 'Ladda ner alla kort och bilder som zip-fil', action: async () => {
@@ -4369,7 +4369,7 @@ function showCommandPalette() {
         downloadBtn.click();
       }
     }},
-    { key: 'R', icon: '📥', name: 'Återställ från backup', desc: 'Återställ kort och bilder från zip-backup', action: async () => {
+    { key: '', icon: '📥', name: 'Återställ från backup', desc: 'Återställ kort och bilder från zip-backup', action: async () => {
       if (window.handleRestoreBackup) {
         window.handleRestoreBackup();
       }
@@ -4667,10 +4667,10 @@ function showCommandPalette() {
     selectedIndex = -1;
   });
 
-  // Focus search input
-  searchInput.focus();
+  // Don't auto-focus search - allows keyboard shortcuts to work immediately
+  // Users can press '/' or click to focus search if needed
 
-  // Tab to start arrow navigation
+  // Tab or '/' to focus search
   searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Tab' || e.key === 'ArrowDown') {
       e.preventDefault();
@@ -4755,6 +4755,13 @@ function showCommandPalette() {
         }
       }
       // If no selection, do nothing (search field will handle it)
+      return;
+    }
+
+    // '/' to focus search
+    if (e.key === '/' && !isTypingInSearch) {
+      e.preventDefault();
+      searchInput.focus();
       return;
     }
 
