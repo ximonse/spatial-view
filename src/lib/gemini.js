@@ -301,9 +301,10 @@ export async function readImageWithGemini(cardId) {
  * @param {string} query - User's query
  * @param {Array} tools - Array of tool definitions for Gemini
  * @param {Object} toolRegistry - Map of tool names to their implementation functions
+ * @param {Array} chatHistory - Optional conversation history from chat UI [{role, text}, ...]
  * @returns {Promise<string>} - Gemini's response
  */
-export async function executeGeminiAgent(query, tools, toolRegistry) {
+export async function executeGeminiAgent(query, tools, toolRegistry, chatHistory = []) {
     const apiKey = await getGoogleAIAPIKey();
     if (!apiKey) {
         throw new Error('No API key provided');
@@ -311,12 +312,78 @@ export async function executeGeminiAgent(query, tools, toolRegistry) {
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-    // Initial request with tools
-    const payload = {
-        contents: [{
+    // Build conversation history in Gemini API format
+    // Transform chat UI format {role: 'user'|'assistant', text: '...'}
+    // to Gemini format {role: 'user'|'model', parts: [{text: '...'}]}
+    const conversationHistory = chatHistory.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.text }]
+    }));
+
+    // Add current query if not already in history
+    if (conversationHistory.length === 0 || conversationHistory[conversationHistory.length - 1].parts[0].text !== query) {
+        conversationHistory.push({
+            role: 'user',
             parts: [{ text: query }]
-        }],
-        tools: tools
+        });
+    }
+
+    // System instruction explaining Gemini's purpose and capabilities
+    const systemInstruction = `Du är en AI-assistent för Spatial View, en visuell digital arbetsyta för handskrivna anteckningar och idéer.
+
+DITT SYFTE:
+- Hjälpa användare att organisera, söka, och arrangera kort på en oändlig canvas
+- Analysera kort baserat på innehåll, datum, tags och metadata
+- Föreslå och utföra visuella arrangemang (mind maps, Kanban, tidslinjer, kluster, etc.)
+
+SPATIAL VIEW GRUNDKONCEPT:
+- Användaren skapar "kort" (cards) som kan innehålla text, bilder, eller båda
+- Varje kort har: text, backText (transkriberad text från bilder), tags, färg, position, skapandedatum
+- Kort kan ha Gemini-extraherad metadata: extractedDate, extractedDateTime, extractedPeople, extractedPlaces
+- Användaren kan markera kort genom sökning eller manuellt
+
+DINA VERKTYG:
+Du har tillgång till flera verktyg för att hjälpa användaren:
+- **listAllTags**: ANVÄND DETTA FÖRST när användaren frågar om tags eller vill organisera efter kategori
+- Sökning och filtrering (searchCards, getAllCards, filterByTag, filterByDate, filterByMentionedDate)
+- Visuella arrangemang (Grid, Timeline, Kanban, Mind Map, Cluster)
+- Datum- och tidsbaserad organisering
+
+VIKTIGT - Tag Discovery:
+När användaren säger "visa kort med tagg X" eller "organisera efter kategori":
+1. Använd FÖRST listAllTags för att se vilka tags som finns
+2. Hitta närmaste matchning (t.ex. "zotero" om användaren säger "Zotero")
+3. Använd sedan filterCardsByTag eller arrangeCardsKanban
+
+VIKTIGT - Bildkort vs Textkort:
+När användaren säger "visa bilder", "bildkort", "kort med bilder" etc:
+- Använd filterImageCards (hasImage: true) - INTE filterCardsByTag("bild")
+- Du kan AUTOMATISKT detektera om ett kort innehåller en bild
+- När användaren säger "visa textkort" eller "kort utan bilder":
+  - Använd filterImageCards (hasImage: false)
+
+KOMMUNIKATIONSSTIL:
+- Var koncis och hjälpsam
+- Förklara vad du gör när du använder verktyg
+- Ge konkreta förslag på hur kort kan organiseras
+- Använd svenska (all UI och användare är svenskspråkiga)
+
+EXEMPEL PÅ ANVÄNDNING:
+- "Visa kort från vecka 46" → Använd filterCardsByDateRange
+- "Organisera alla möten" → Använd listAllTags först, sedan filterCardsByTag + arrangeCardsGrid
+- "Gör en tidslinje" → Använd arrangeCardsTimeline
+- "Skapa en mindmap" → Använd arrangeCardsMindMap
+- "Visa alla bilder" → Använd filterImageCards (hasImage: true)
+- "Visa textkort" → Använd filterImageCards (hasImage: false)
+- "Vilka taggar finns?" → Använd listAllTags`;
+
+    // Initial request with tools, conversation history, and system instruction
+    const payload = {
+        contents: conversationHistory,
+        tools: tools,
+        systemInstruction: {
+            parts: [{ text: systemInstruction }]
+        }
     };
 
     let response = await fetch(url, {
@@ -332,8 +399,7 @@ export async function executeGeminiAgent(query, tools, toolRegistry) {
 
     let data = await response.json();
 
-    // Handle function calls in a loop
-    const conversationHistory = [{ parts: [{ text: query }] }];
+    // Handle function calls in a loop (conversationHistory already initialized above)
 
     while (data.candidates?.[0]?.content?.parts) {
         const parts = data.candidates[0].content.parts;
@@ -390,7 +456,10 @@ export async function executeGeminiAgent(query, tools, toolRegistry) {
 
         const followUpPayload = {
             contents: conversationHistory,
-            tools: tools
+            tools: tools,
+            systemInstruction: {
+                parts: [{ text: systemInstruction }]
+            }
         };
 
         response = await fetch(url, {
