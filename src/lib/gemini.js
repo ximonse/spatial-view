@@ -295,3 +295,117 @@ export async function readImageWithGemini(cardId) {
         }, 3000);
     }
 }
+
+/**
+ * Execute Gemini Agent with function calling capabilities
+ * @param {string} query - User's query
+ * @param {Array} tools - Array of tool definitions for Gemini
+ * @param {Object} toolRegistry - Map of tool names to their implementation functions
+ * @returns {Promise<string>} - Gemini's response
+ */
+export async function executeGeminiAgent(query, tools, toolRegistry) {
+    const apiKey = await getGoogleAIAPIKey();
+    if (!apiKey) {
+        throw new Error('No API key provided');
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    // Initial request with tools
+    const payload = {
+        contents: [{
+            parts: [{ text: query }]
+        }],
+        tools: tools
+    };
+
+    let response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+    }
+
+    let data = await response.json();
+
+    // Handle function calls in a loop
+    const conversationHistory = [{ parts: [{ text: query }] }];
+
+    while (data.candidates?.[0]?.content?.parts) {
+        const parts = data.candidates[0].content.parts;
+
+        // Add assistant response to history
+        conversationHistory.push({ role: 'model', parts: parts });
+
+        // Check if there are function calls
+        const functionCalls = parts.filter(part => part.functionCall);
+
+        if (functionCalls.length === 0) {
+            // No more function calls, return the text response
+            const textPart = parts.find(part => part.text);
+            return textPart?.text || 'Gemini svarade utan text.';
+        }
+
+        // Execute all function calls
+        const functionResponses = [];
+        for (const fc of functionCalls) {
+            const funcName = fc.functionCall.name;
+            const funcArgs = fc.functionCall.args || {};
+
+            console.log(`Executing tool: ${funcName}`, funcArgs);
+
+            if (toolRegistry[funcName]) {
+                try {
+                    const result = await toolRegistry[funcName](funcArgs);
+                    functionResponses.push({
+                        functionResponse: {
+                            name: funcName,
+                            response: { result: result }
+                        }
+                    });
+                } catch (error) {
+                    functionResponses.push({
+                        functionResponse: {
+                            name: funcName,
+                            response: { error: error.message }
+                        }
+                    });
+                }
+            } else {
+                functionResponses.push({
+                    functionResponse: {
+                        name: funcName,
+                        response: { error: `Function ${funcName} not found` }
+                    }
+                });
+            }
+        }
+
+        // Send function responses back to Gemini
+        conversationHistory.push({ parts: functionResponses });
+
+        const followUpPayload = {
+            contents: conversationHistory,
+            tools: tools
+        };
+
+        response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(followUpPayload)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `Follow-up request failed`);
+        }
+
+        data = await response.json();
+    }
+
+    return 'Gemini slutade svara oväntat.';
+}
