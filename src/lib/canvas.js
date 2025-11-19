@@ -107,6 +107,46 @@ function getCardColor(cardColor) {
 }
 
 /**
+ * Get color from text based on subject keywords
+ * Matches both abbreviations and full names
+ */
+function getColorFromText(text) {
+  if (!text) return null;
+
+  const lowerText = text.toLowerCase();
+
+  // Subject patterns: [patterns to match] -> color
+  const subjectColors = [
+    { patterns: ['ma', 'matematik'], color: '#2196f3' },        // Matematik - blå
+    { patterns: ['sv', 'svenska'], color: '#ffeb3b' },          // Svenska - gul
+    { patterns: ['no', 'naturorientering'], color: '#4caf50' }, // NO - grön
+    { patterns: ['eng', 'engelska'], color: '#f44336' },        // Engelska - röd
+    { patterns: ['bi', 'bild'], color: '#9c27b0' },             // Bild - lila
+    { patterns: ['tk', 'teknik'], color: '#9e9e9e' },           // Teknik - grå
+    { patterns: ['spanska', 'språk'], color: '#ff9800' },       // Spanska/språk - orange
+    { patterns: ['idh', 'idrott'], color: '#e91e63' },          // Idrott - rosa
+    { patterns: ['so', 'samhällskunskap'], color: '#ef9a9a' },  // SO - ljusröd
+    { patterns: ['sl', 'slöjd'], color: '#fff59d' },            // Slöjd - ljusgul
+    { patterns: ['mu', 'musik'], color: '#a5d6a7' },            // Musik - ljusgrön
+    { patterns: ['hkk'], color: '#a5d6a7' },                    // HKK - ljusgrön
+    { patterns: ['lunch'], color: '#ffffff' }                   // Lunch - vit
+  ];
+
+  // Find first matching pattern
+  for (const { patterns, color } of subjectColors) {
+    for (const pattern of patterns) {
+      // Match whole word or at word boundary
+      const regex = new RegExp(`\\b${pattern}\\b`, 'i');
+      if (regex.test(lowerText)) {
+        return color;
+      }
+    }
+  }
+
+  return null; // No match found
+}
+
+/**
  * Initialize Konva canvas
  */
 export async function initCanvas() {
@@ -5262,13 +5302,16 @@ async function showGeminiAssistant() {
             cardText += `\n\n👥 ${event.attendees.length} deltagare`;
           }
 
-          // Create the card
+          // Create the card with automatic color detection
+          const autoColor = getColorFromText(event.summary);
+          const defaultColor = event.isAllDay ? '#e3f2fd' : '#fff3e0';
+
           const newCard = await createCard({
             text: cardText,
             x: 100 + (createdCount % 5) * 250, // Spread cards horizontally
             y: 100 + Math.floor(createdCount / 5) * 200,
             tags: ['calendar', 'meeting'],
-            cardColor: event.isAllDay ? '#e3f2fd' : '#fff3e0',
+            cardColor: autoColor || defaultColor, // Use subject color if found, otherwise default
             calendarEventId: event.id, // Store the calendar event ID!
             calendarEventLink: event.htmlLink,
             eventDate: event.start // Store event date for sorting
@@ -5290,22 +5333,21 @@ async function showGeminiAssistant() {
     },
 
     applySchoolColorScheme: async () => {
-      // Preset color scheme for school subjects
+      // Preset color scheme for school subjects (both abbreviations and full names)
       const schoolColors = [
-        {pattern: "Ma", color: "#2196f3"},        // Matematik - blå
-        {pattern: "lunch", color: "#ffffff"},     // Lunch - vit
-        {pattern: "SV", color: "#ffeb3b"},        // Svenska - gul
-        {pattern: "No", color: "#4caf50"},        // NO - grön
-        {pattern: "Bi", color: "#9c27b0"},        // Biologi - lila
-        {pattern: "Tk", color: "#9e9e9e"},        // Teknik - grå
-        {pattern: "Eng", color: "#f44336"},       // Engelska - röd
-        {pattern: "Spanska", color: "#ff9800"},   // Spanska - orange
-        {pattern: "språk", color: "#ff9800"},     // språk - orange
-        {pattern: "IDH", color: "#e91e63"},       // Idrott - rosa
-        {pattern: "SO", color: "#ef9a9a"},        // SO - ljusröd
-        {pattern: "Sl", color: "#fff59d"},        // Slöjd - ljusgul
-        {pattern: "Mu", color: "#a5d6a7"},        // Musik - ljusgrön
-        {pattern: "HKK", color: "#a5d6a7"}        // HKK - ljusgrön
+        {patterns: ["ma", "matematik"], color: "#2196f3"},           // Matematik - blå
+        {patterns: ["sv", "svenska"], color: "#ffeb3b"},             // Svenska - gul
+        {patterns: ["no", "naturorientering"], color: "#4caf50"},    // NO - grön
+        {patterns: ["eng", "engelska"], color: "#f44336"},           // Engelska - röd
+        {patterns: ["bi", "bild"], color: "#9c27b0"},                // Bild - lila
+        {patterns: ["tk", "teknik"], color: "#9e9e9e"},              // Teknik - grå
+        {patterns: ["spanska", "språk"], color: "#ff9800"},          // Spanska/språk - orange
+        {patterns: ["idh", "idrott"], color: "#e91e63"},             // Idrott - rosa
+        {patterns: ["so", "samhällskunskap"], color: "#ef9a9a"},     // SO - ljusröd
+        {patterns: ["sl", "slöjd"], color: "#fff59d"},               // Slöjd - ljusgul
+        {patterns: ["mu", "musik"], color: "#a5d6a7"},               // Musik - ljusgrön
+        {patterns: ["hkk"], color: "#a5d6a7"},                       // HKK - ljusgrön
+        {patterns: ["lunch"], color: "#ffffff"}                      // Lunch - vit
       ];
 
       try {
@@ -5313,17 +5355,22 @@ async function showGeminiAssistant() {
         let coloredCount = 0;
         const colorSummary = {};
 
-        for (const {pattern, color} of schoolColors) {
+        for (const {patterns, color} of schoolColors) {
           const matchingCards = cards.filter(card => {
             const text = (card.text || '').toLowerCase();
             const backText = (card.backText || '').toLowerCase();
             const tags = (card.tags || []).join(' ').toLowerCase();
             const searchText = `${text} ${backText} ${tags}`;
-            return searchText.includes(pattern.toLowerCase());
+
+            // Check if any pattern matches
+            return patterns.some(pattern => {
+              const regex = new RegExp(`\\b${pattern}\\b`, 'i');
+              return regex.test(searchText);
+            });
           });
 
           if (matchingCards.length > 0) {
-            colorSummary[pattern] = matchingCards.length;
+            colorSummary[patterns[0]] = matchingCards.length; // Use first pattern for summary
 
             for (const card of matchingCards) {
               await updateCard(card.id, { cardColor: color });
@@ -5468,8 +5515,8 @@ async function showGeminiAssistant() {
         const datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, weeks * 7);
 
         // Layout constants (reduced spacing by 1/3)
-        const columnWidth = 250;
-        const columnSpacing = 20;  // Reduced by 1/3 (was 30)
+        const columnWidth = 210;   // Tighter columns (was 250)
+        const columnSpacing = 10;  // Much tighter spacing (was 20)
         const cardHeight = 160;
         const cardSpacing = 10;    // Reduced by 1/3 (was 15)
         const headerHeight = 80;
@@ -6653,13 +6700,16 @@ async function showChatGPTAssistant() {
             cardText += `\n\n👥 ${event.attendees.length} deltagare`;
           }
 
-          // Create the card
+          // Create the card with automatic color detection
+          const autoColor = getColorFromText(event.summary);
+          const defaultColor = event.isAllDay ? '#e3f2fd' : '#fff3e0';
+
           const newCard = await createCard({
             text: cardText,
             x: 100 + (createdCount % 5) * 250, // Spread cards horizontally
             y: 100 + Math.floor(createdCount / 5) * 200,
             tags: ['calendar', 'meeting'],
-            cardColor: event.isAllDay ? '#e3f2fd' : '#fff3e0',
+            cardColor: autoColor || defaultColor, // Use subject color if found, otherwise default
             calendarEventId: event.id, // Store the calendar event ID!
             calendarEventLink: event.htmlLink,
             eventDate: event.start // Store event date for sorting
@@ -6682,20 +6732,19 @@ async function showChatGPTAssistant() {
 
     applySchoolColorScheme: async () => {
       const schoolColors = [
-        {pattern: "Ma", color: "#2196f3"},
-        {pattern: "lunch", color: "#ffffff"},
-        {pattern: "SV", color: "#ffeb3b"},
-        {pattern: "No", color: "#4caf50"},
-        {pattern: "Bi", color: "#9c27b0"},
-        {pattern: "Tk", color: "#9e9e9e"},
-        {pattern: "Eng", color: "#f44336"},
-        {pattern: "Spanska", color: "#ff9800"},
-        {pattern: "språk", color: "#ff9800"},
-        {pattern: "IDH", color: "#e91e63"},
-        {pattern: "SO", color: "#ef9a9a"},
-        {pattern: "Sl", color: "#fff59d"},
-        {pattern: "Mu", color: "#a5d6a7"},
-        {pattern: "HKK", color: "#a5d6a7"}
+        {patterns: ["ma", "matematik"], color: "#2196f3"},           // Matematik - blå
+        {patterns: ["sv", "svenska"], color: "#ffeb3b"},             // Svenska - gul
+        {patterns: ["no", "naturorientering"], color: "#4caf50"},    // NO - grön
+        {patterns: ["eng", "engelska"], color: "#f44336"},           // Engelska - röd
+        {patterns: ["bi", "bild"], color: "#9c27b0"},                // Bild - lila
+        {patterns: ["tk", "teknik"], color: "#9e9e9e"},              // Teknik - grå
+        {patterns: ["spanska", "språk"], color: "#ff9800"},          // Spanska/språk - orange
+        {patterns: ["idh", "idrott"], color: "#e91e63"},             // Idrott - rosa
+        {patterns: ["so", "samhällskunskap"], color: "#ef9a9a"},     // SO - ljusröd
+        {patterns: ["sl", "slöjd"], color: "#fff59d"},               // Slöjd - ljusgul
+        {patterns: ["mu", "musik"], color: "#a5d6a7"},               // Musik - ljusgrön
+        {patterns: ["hkk"], color: "#a5d6a7"},                       // HKK - ljusgrön
+        {patterns: ["lunch"], color: "#ffffff"}                      // Lunch - vit
       ];
 
       try {
@@ -6703,17 +6752,22 @@ async function showChatGPTAssistant() {
         let coloredCount = 0;
         const colorSummary = {};
 
-        for (const {pattern, color} of schoolColors) {
+        for (const {patterns, color} of schoolColors) {
           const matchingCards = cards.filter(card => {
             const text = (card.text || '').toLowerCase();
             const backText = (card.backText || '').toLowerCase();
             const tags = (card.tags || []).join(' ').toLowerCase();
             const searchText = `${text} ${backText} ${tags}`;
-            return searchText.includes(pattern.toLowerCase());
+
+            // Check if any pattern matches
+            return patterns.some(pattern => {
+              const regex = new RegExp(`\\b${pattern}\\b`, 'i');
+              return regex.test(searchText);
+            });
           });
 
           if (matchingCards.length > 0) {
-            colorSummary[pattern] = matchingCards.length;
+            colorSummary[patterns[0]] = matchingCards.length;
 
             for (const card of matchingCards) {
               await updateCard(card.id, { cardColor: color });
@@ -6848,8 +6902,8 @@ async function showChatGPTAssistant() {
 
         const datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, weeks * 7);
 
-        const columnWidth = 250;
-        const columnSpacing = 20;  // Reduced by 1/3 (was 30)
+        const columnWidth = 210;   // Tighter columns (was 250)
+        const columnSpacing = 10;  // Much tighter spacing (was 20)
         const cardHeight = 160;
         const cardSpacing = 10;    // Reduced by 1/3 (was 15)
         const headerHeight = 80;
