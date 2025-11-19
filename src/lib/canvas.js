@@ -4723,6 +4723,14 @@ async function showGeminiAssistant() {
         }
       },
       {
+        name: 'arrangeAllTagsInGrids',
+        description: 'Arrangera ALLA kort grupperade efter deras taggar i separata grids (vertikalt). ANVÄND DENNA för "sortera tematiskt" eller "gruppera alla taggar". Inga parametrar behövs!',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
         name: 'arrangeCardsTimeline',
         description: 'Arrangera kort kronologiskt på en tidslinje baserat på skapandedatum eller extraherade datum',
         parameters: {
@@ -4941,6 +4949,8 @@ async function showGeminiAssistant() {
     arrangeCardsInGrid: async (args) => {
       const columns = args.columns || 4;
       const spacing = args.spacing || 20;
+      const offsetX = args.offsetX || 0;
+      const offsetY = args.offsetY || 0;
 
       const selectedNodes = layer.find('.selected');
       if (selectedNodes.length === 0) {
@@ -4951,13 +4961,13 @@ async function showGeminiAssistant() {
       const cardWidth = 200;
       const cardHeight = 150;
 
-      // Arrange in grid
+      // Arrange in grid with offset
       selectedNodes.forEach((node, index) => {
         const row = Math.floor(index / columns);
         const col = index % columns;
 
-        const x = col * (cardWidth + spacing);
-        const y = row * (cardHeight + spacing);
+        const x = offsetX + col * (cardWidth + spacing);
+        const y = offsetY + row * (cardHeight + spacing);
 
         node.position({ x, y });
       });
@@ -4965,7 +4975,7 @@ async function showGeminiAssistant() {
       layer.batchDraw();
 
       const rows = Math.ceil(selectedNodes.length / columns);
-      return `Arrangerade ${selectedNodes.length} kort i ett ${columns}x${rows} rutnät.`;
+      return `Arrangerade ${selectedNodes.length} kort i ett ${columns}x${rows} rutnät på position (${offsetX}, ${offsetY}).`;
     },
     groupCardsByCategory: async (args) => {
       const categoryTag = args.categoryTag;
@@ -4997,6 +5007,75 @@ async function showGeminiAssistant() {
       layer.batchDraw();
 
       return `Grupperade och arrangerade ${selectedNodes.length} kort med kategorin "${categoryTag}".`;
+    },
+
+    arrangeAllTagsInGrids: async () => {
+      console.log('🔍 arrangeAllTagsInGrids: Starting...');
+
+      // Get all unique tags
+      const cards = await getAllCards();
+      console.log(`📦 Found ${cards.length} cards in database`);
+
+      const tagCounts = new Map();
+      for (const card of cards) {
+        if (card.tags && Array.isArray(card.tags)) {
+          for (const tag of card.tags) {
+            tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+          }
+        }
+      }
+
+      const tags = Array.from(tagCounts.keys());
+      console.log(`🏷️ Found ${tags.length} unique tags:`, tags);
+
+      if (tags.length === 0) {
+        return 'Inga taggar hittades.';
+      }
+
+      // Constants for layout
+      const cardWidth = 200;
+      const cardHeight = 150;
+      const columns = 4;
+      const spacing = 20;
+      const gridGap = 100; // Space between different tag groups
+
+      let currentY = 0;
+      let arrangedCount = 0;
+
+      // Arrange each tag group
+      for (const tag of tags) {
+        // Filter cards by this tag
+        const matchingCards = cards.filter(c => c.tags && c.tags.includes(tag));
+        console.log(`🏷️ Tag "${tag}": ${matchingCards.length} cards`);
+
+        if (matchingCards.length === 0) continue;
+
+        // Find and arrange these cards
+        matchingCards.forEach((card, index) => {
+          const node = layer.findOne(n => n.getAttr('cardId') === card.id);
+          if (node) {
+            const row = Math.floor(index / columns);
+            const col = index % columns;
+            const x = col * (cardWidth + spacing);
+            const y = currentY + row * (cardHeight + spacing);
+
+            console.log(`  ➡️ Moving card ${card.id} to (${x}, ${y})`);
+            node.position({ x, y });
+            arrangedCount++;
+          } else {
+            console.warn(`  ⚠️ Node not found for card ${card.id}`);
+          }
+        });
+
+        // Move to next group position
+        const rows = Math.ceil(matchingCards.length / columns);
+        currentY += rows * (cardHeight + spacing) + gridGap;
+      }
+
+      console.log(`✅ Calling layer.batchDraw() for ${arrangedCount} cards`);
+      layer.batchDraw();
+
+      return `Arrangerade ${arrangedCount} kort i ${tags.length} tagg-grupper (vertikalt med ${gridGap}px mellanrum).`;
     },
 
     arrangeCardsTimeline: async (args) => {
@@ -5709,6 +5788,11 @@ async function showChatGPTAssistant() {
             method: { type: 'string', enum: ['tags', 'ai'], description: 'Clustering method' }
           }
         }
+      },
+      {
+        name: 'arrangeAllTagsInGrids',
+        description: 'Arrange ALL cards grouped by their tags in separate grids (vertically stacked). USE THIS for "sort thematically" or "group all tags". No parameters needed!',
+        parameters: { type: 'object', properties: {} }
       }
     ]
   }];
@@ -5895,6 +5979,75 @@ async function showChatGPTAssistant() {
       }
 
       return `Clustered cards into ${Object.keys(clusters).length} groups by tags`;
+    },
+
+    arrangeAllTagsInGrids: async () => {
+      console.log('🔍 [ChatGPT] arrangeAllTagsInGrids: Starting...');
+
+      // Get all unique tags
+      const cards = await getAllCards();
+      console.log(`📦 [ChatGPT] Found ${cards.length} cards in database`);
+
+      const tagCounts = new Map();
+      for (const card of cards) {
+        if (card.tags && Array.isArray(card.tags)) {
+          for (const tag of card.tags) {
+            tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+          }
+        }
+      }
+
+      const tags = Array.from(tagCounts.keys());
+      console.log(`🏷️ [ChatGPT] Found ${tags.length} unique tags:`, tags);
+
+      if (tags.length === 0) {
+        return 'No tags found.';
+      }
+
+      // Constants for layout
+      const cardWidth = 200;
+      const cardHeight = 150;
+      const columns = 4;
+      const spacing = 20;
+      const gridGap = 100; // Space between different tag groups
+
+      let currentY = 0;
+      let arrangedCount = 0;
+
+      // Arrange each tag group
+      for (const tag of tags) {
+        // Filter cards by this tag
+        const matchingCards = cards.filter(c => c.tags && c.tags.includes(tag));
+        console.log(`🏷️ [ChatGPT] Tag "${tag}": ${matchingCards.length} cards`);
+
+        if (matchingCards.length === 0) continue;
+
+        // Find and arrange these cards
+        matchingCards.forEach((card, index) => {
+          const node = layer.findOne(n => n.getAttr('cardId') === card.id);
+          if (node) {
+            const row = Math.floor(index / columns);
+            const col = index % columns;
+            const x = col * (cardWidth + spacing);
+            const y = currentY + row * (cardHeight + spacing);
+
+            console.log(`  ➡️ [ChatGPT] Moving card ${card.id} to (${x}, ${y})`);
+            node.position({ x, y });
+            arrangedCount++;
+          } else {
+            console.warn(`  ⚠️ [ChatGPT] Node not found for card ${card.id}`);
+          }
+        });
+
+        // Move to next group position
+        const rows = Math.ceil(matchingCards.length / columns);
+        currentY += rows * (cardHeight + spacing) + gridGap;
+      }
+
+      console.log(`✅ [ChatGPT] Calling layer.batchDraw() for ${arrangedCount} cards`);
+      layer.batchDraw();
+
+      return `Arranged ${arrangedCount} cards in ${tags.length} tag groups (vertically with ${gridGap}px spacing).`;
     }
   };
 
