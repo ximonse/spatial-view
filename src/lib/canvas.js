@@ -28,7 +28,7 @@ import Konva from 'konva';
 import { marked } from 'marked';
 import { getAllCards, updateCard, createCard, deleteCard, getCard } from './storage.js';
 import { processImage } from '../utils/image-processing.js';
-import { readImageWithGemini, executeGeminiAgent, getGoogleAIAPIKey } from './gemini.js';
+import { readImageWithGemini, executeGeminiAgent, getGoogleAIAPIKey, executeChatGPTAgent } from './gemini.js';
 import {
   arrangeVertical,
   arrangeHorizontal,
@@ -5126,6 +5126,646 @@ async function showGeminiAssistant() {
 }
 
 /**
+ * Show ChatGPT Assistant dialog
+ */
+async function showChatGPTAssistant() {
+  // Reuse the same dialog structure as Gemini, but with ChatGPT
+  // This is almost identical to showGeminiAssistant but uses executeChatGPTAgent
+
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  `;
+
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 700px;
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  `;
+
+  dialog.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center;
+                padding: 20px 24px; border-bottom: 1px solid var(--border-color);">
+      <h3 style="margin: 0; font-size: 20px; color: var(--text-primary);">
+        💬 ChatGPT Chat
+      </h3>
+      <button id="chatgptClose" style="background: none; border: none; font-size: 24px; cursor: pointer;
+              color: var(--text-secondary); padding: 0; line-height: 1;">&times;</button>
+    </div>
+    <div id="chatgptMessages" style="
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: var(--bg-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    "></div>
+    <div id="chatgptVoiceIndicator" style="
+      display: none;
+      padding: 8px 16px;
+      margin: 0 16px;
+      background: #ff4444;
+      color: white;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      text-align: center;
+      font-size: 14px;
+    ">
+      🔴 Lyssnar... <span id="chatgptVoiceTranscript" style="font-style: italic;"></span>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <input type="text" id="chatgptQuery" placeholder="Skriv ditt meddelande eller håll 'V' för röst..."
+        style="flex: 1; padding: 12px; font-size: 14px;
+               border: 2px solid var(--border-color); border-radius: 8px;
+               background: var(--bg-secondary); color: var(--text-primary);
+               font-family: sans-serif; box-sizing: border-box;" />
+      <button id="chatgptVoice" style="padding: 12px; background: var(--bg-secondary);
+              color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 8px;
+              cursor: pointer; font-size: 20px; line-height: 1; width: 48px; height: 48px;
+              display: flex; align-items: center; justify-content: center;">🎤</button>
+      <button id="chatgptAsk" style="padding: 12px 24px; background: var(--accent-color);
+              color: white; border: none; border-radius: 8px; cursor: pointer;
+              font-size: 14px; white-space: nowrap;">Skicka</button>
+    </div>
+  `;
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  const queryInput = document.getElementById('chatgptQuery');
+  const chatMessages = document.getElementById('chatgptMessages');
+  const askBtn = document.getElementById('chatgptAsk');
+  const closeBtn = document.getElementById('chatgptClose');
+  const voiceBtn = document.getElementById('chatgptVoice');
+  const voiceIndicator = document.getElementById('chatgptVoiceIndicator');
+  const voiceTranscript = document.getElementById('chatgptVoiceTranscript');
+
+  // Conversation history
+  const conversationHistory = [];
+
+  // Voice recognition (same as Gemini)
+  let recognition = null;
+  let isRecording = false;
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'sv-SE';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      isRecording = true;
+      voiceIndicator.style.display = 'block';
+      voiceTranscript.textContent = '';
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0].transcript)
+        .join('');
+      voiceTranscript.textContent = transcript;
+
+      if (event.results[0].isFinal) {
+        queryInput.value = transcript;
+        voiceIndicator.style.display = 'none';
+      }
+    };
+
+    recognition.onend = () => {
+      isRecording = false;
+      voiceIndicator.style.display = 'none';
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      voiceIndicator.style.display = 'none';
+      isRecording = false;
+      if (event.error === 'not-allowed') {
+        addSystemMessage('❌ Mikrofon-tillstånd nekades. Aktivera i webbläsaren.');
+      }
+    };
+
+    voiceBtn.addEventListener('mousedown', () => {
+      if (!isRecording) recognition.start();
+    });
+
+    voiceBtn.addEventListener('mouseup', () => {
+      if (isRecording) recognition.stop();
+    });
+
+    voiceBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (!isRecording) recognition.start();
+    });
+
+    voiceBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      if (isRecording) recognition.stop();
+    });
+  } else {
+    voiceBtn.style.display = 'none';
+    console.warn('Speech recognition not supported in this browser');
+  }
+
+  const handleVoiceKey = (e) => {
+    if (e.key === 'v' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (document.activeElement !== queryInput &&
+          document.activeElement.tagName !== 'INPUT' &&
+          document.activeElement.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        if (!isRecording && recognition) {
+          recognition.start();
+        }
+      }
+    }
+  };
+
+  const handleVoiceKeyUp = (e) => {
+    if (e.key === 'v') {
+      if (isRecording && recognition) {
+        recognition.stop();
+      }
+    }
+  };
+
+  document.addEventListener('keydown', handleVoiceKey);
+  document.addEventListener('keyup', handleVoiceKeyUp);
+
+  // Function to add message to chat
+  const addMessage = (text, isUser) => {
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `
+      padding: 12px;
+      border-radius: 12px;
+      max-width: 85%;
+      word-wrap: break-word;
+      line-height: 1.5;
+      ${isUser ? `
+        background: var(--accent-color);
+        color: white;
+        align-self: flex-end;
+        margin-left: auto;
+      ` : `
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        align-self: flex-start;
+      `}
+    `;
+
+    // Render markdown for ChatGPT responses, plain text for user messages
+    if (isUser) {
+      messageDiv.textContent = text;
+    } else {
+      const htmlContent = marked.parse(text);
+      messageDiv.innerHTML = htmlContent;
+
+      // Add styling for markdown elements
+      messageDiv.querySelectorAll('p').forEach(p => p.style.margin = '0.5em 0');
+      messageDiv.querySelectorAll('ul, ol').forEach(list => {
+        list.style.marginLeft = '1.5em';
+        list.style.marginTop = '0.5em';
+        list.style.marginBottom = '0.5em';
+      });
+      messageDiv.querySelectorAll('li').forEach(li => li.style.marginBottom = '0.25em');
+      messageDiv.querySelectorAll('strong').forEach(strong => strong.style.fontWeight = 'bold');
+      messageDiv.querySelectorAll('code').forEach(code => {
+        code.style.cssText = `
+          background: var(--bg-secondary);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: monospace;
+          font-size: 0.9em;
+        `;
+      });
+      messageDiv.querySelectorAll('pre').forEach(pre => {
+        pre.style.cssText = `
+          background: var(--bg-secondary);
+          padding: 12px;
+          border-radius: 6px;
+          overflow-x: auto;
+          margin: 0.5em 0;
+        `;
+        const codeEl = pre.querySelector('code');
+        if (codeEl) {
+          codeEl.style.background = 'none';
+          codeEl.style.padding = '0';
+        }
+      });
+    }
+
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  };
+
+  const addSystemMessage = (text) => {
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-style: italic;
+      text-align: center;
+      background: var(--bg-secondary);
+    `;
+    messageDiv.textContent = text;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return messageDiv;
+  };
+
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      cleanup();
+    }
+  };
+
+  const cleanup = () => {
+    document.removeEventListener('keydown', handleEscape);
+    document.removeEventListener('keydown', handleVoiceKey);
+    document.removeEventListener('keyup', handleVoiceKeyUp);
+
+    if (isRecording && recognition) {
+      recognition.stop();
+    }
+
+    if (overlay.parentNode) {
+      document.body.removeChild(overlay);
+    }
+  };
+
+  closeBtn.addEventListener('click', cleanup);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) cleanup();
+  });
+
+  document.addEventListener('keydown', handleEscape);
+
+  // Reuse the same tools and toolRegistry from showGeminiAssistant
+  // (I'll need to extract this into a shared function, but for now duplicate it)
+  const tools = [{
+    functionDeclarations: [
+      {
+        name: 'searchCards',
+        description: 'Search for cards containing specific text (supports Boolean operators: AND, OR, NOT, wildcards *, ?, and proximity NEAR/N)',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Search query (e.g., "python AND NOT tutorial*")' }
+          },
+          required: ['query']
+        }
+      },
+      {
+        name: 'getAllCards',
+        description: 'Get all cards from the canvas',
+        parameters: { type: 'object', properties: {} }
+      },
+      {
+        name: 'filterCardsByTag',
+        description: 'Filter and display cards by a specific tag',
+        parameters: {
+          type: 'object',
+          properties: {
+            tag: { type: 'string', description: 'Tag name to filter by' }
+          },
+          required: ['tag']
+        }
+      },
+      {
+        name: 'listAllTags',
+        description: 'List all unique tags across all cards with their counts. ALWAYS use this first when user asks about tags or categories!',
+        parameters: { type: 'object', properties: {} }
+      },
+      {
+        name: 'filterImageCards',
+        description: 'Filter cards based on whether they contain images or not',
+        parameters: {
+          type: 'object',
+          properties: {
+            hasImage: { type: 'boolean', description: 'true to show only image cards, false to show only text cards' }
+          },
+          required: ['hasImage']
+        }
+      },
+      {
+        name: 'filterCardsByDateRange',
+        description: 'Filter cards created within a specific date range',
+        parameters: {
+          type: 'object',
+          properties: {
+            startDate: { type: 'string', description: 'Start date (YYYY-MM-DD)' },
+            endDate: { type: 'string', description: 'End date (YYYY-MM-DD)' }
+          },
+          required: ['startDate', 'endDate']
+        }
+      },
+      {
+        name: 'arrangeCardsGrid',
+        description: 'Arrange selected cards in a grid layout',
+        parameters: {
+          type: 'object',
+          properties: {
+            columns: { type: 'number', description: 'Number of columns (default: auto)' }
+          }
+        }
+      },
+      {
+        name: 'arrangeCardsTimeline',
+        description: 'Arrange cards in a timeline based on dates (extractedDate or createdAt)',
+        parameters: {
+          type: 'object',
+          properties: {
+            direction: { type: 'string', enum: ['horizontal', 'vertical'], description: 'Timeline direction' }
+          }
+        }
+      },
+      {
+        name: 'arrangeCardsKanban',
+        description: 'Arrange cards in Kanban columns based on tags',
+        parameters: {
+          type: 'object',
+          properties: {
+            columns: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'List of column names/tags (e.g., ["backlog", "todo", "pågår", "klart"])'
+            }
+          },
+          required: ['columns']
+        }
+      },
+      {
+        name: 'arrangeCardsMindMap',
+        description: 'Arrange cards in a mind map/radial layout',
+        parameters: { type: 'object', properties: {} }
+      },
+      {
+        name: 'arrangeCardsCluster',
+        description: 'Cluster cards by similarity (tags, content, or AI-based)',
+        parameters: {
+          type: 'object',
+          properties: {
+            method: { type: 'string', enum: ['tags', 'ai'], description: 'Clustering method' }
+          }
+        }
+      }
+    ]
+  }];
+
+  const toolRegistry = {
+    searchCards: async ({ query }) => {
+      // Import and call search function
+      const searchBar = document.getElementById('search-input');
+      if (searchBar) {
+        searchBar.value = query;
+        const event = new Event('input', { bubbles: true });
+        searchBar.dispatchEvent(event);
+        const cards = await getAllCards();
+        const selectedNodes = layer.find('.selected');
+        return `Found ${selectedNodes.length} cards matching "${query}"`;
+      }
+      return 'Search not available';
+    },
+
+    getAllCards: async () => {
+      const cards = await getAllCards();
+      return cards.map(c => ({
+        id: c.id,
+        text: c.text?.substring(0, 100),
+        tags: c.tags,
+        hasImage: !!c.image,
+        createdAt: c.createdAt
+      }));
+    },
+
+    filterCardsByTag: async ({ tag }) => {
+      const cards = await getAllCards();
+      const filtered = cards.filter(c => c.tags?.includes(tag));
+
+      // Select matching cards on canvas
+      layer.find('.card').forEach(node => {
+        const cardId = node.getAttr('cardId');
+        if (filtered.some(c => c.id === cardId)) {
+          node.setAttr('selected', true);
+          node.findOne('.selectIndicator')?.visible(true);
+        }
+      });
+      layer.batchDraw();
+
+      return `Selected ${filtered.length} cards with tag "${tag}"`;
+    },
+
+    listAllTags: async () => {
+      const cards = await getAllCards();
+      const tagCounts = {};
+      cards.forEach(c => {
+        (c.tags || []).forEach(tag => {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      });
+      const sortedTags = Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([tag, count]) => `${tag} (${count})`);
+      return sortedTags.length > 0 ? sortedTags : ['No tags found'];
+    },
+
+    filterImageCards: async ({ hasImage }) => {
+      const cards = await getAllCards();
+      const filtered = cards.filter(c => !!c.image === hasImage);
+
+      layer.find('.card').forEach(node => {
+        const cardId = node.getAttr('cardId');
+        if (filtered.some(c => c.id === cardId)) {
+          node.setAttr('selected', true);
+          node.findOne('.selectIndicator')?.visible(true);
+        }
+      });
+      layer.batchDraw();
+
+      return `Selected ${filtered.length} ${hasImage ? 'image' : 'text'} cards`;
+    },
+
+    filterCardsByDateRange: async ({ startDate, endDate }) => {
+      const cards = await getAllCards();
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      const filtered = cards.filter(c => {
+        const date = c.geminiMetadata?.extractedDate
+          ? new Date(c.geminiMetadata.extractedDate)
+          : new Date(c.createdAt);
+        return date >= start && date <= end;
+      });
+
+      layer.find('.card').forEach(node => {
+        const cardId = node.getAttr('cardId');
+        if (filtered.some(c => c.id === cardId)) {
+          node.setAttr('selected', true);
+          node.findOne('.selectIndicator')?.visible(true);
+        }
+      });
+      layer.batchDraw();
+
+      return `Selected ${filtered.length} cards from ${startDate} to ${endDate}`;
+    },
+
+    arrangeCardsGrid: async (args) => {
+      const selectedNodes = layer.find('.selected');
+      if (selectedNodes.length === 0) return 'No cards selected';
+      await arrangeGrid(selectedNodes, args.columns);
+      return `Arranged ${selectedNodes.length} cards in grid`;
+    },
+
+    arrangeCardsTimeline: async ({ direction = 'horizontal' }) => {
+      const selectedNodes = layer.find('.selected');
+      if (selectedNodes.length === 0) return 'No cards selected';
+      const cards = await getAllCards();
+      // Sort by date and arrange
+      const sortedNodes = selectedNodes.toArray().sort((a, b) => {
+        const cardA = cards.find(c => c.id === a.getAttr('cardId'));
+        const cardB = cards.find(c => c.id === b.getAttr('cardId'));
+        const dateA = cardA?.geminiMetadata?.extractedDate || cardA?.createdAt;
+        const dateB = cardB?.geminiMetadata?.extractedDate || cardB?.createdAt;
+        return new Date(dateA) - new Date(dateB);
+      });
+      if (direction === 'horizontal') {
+        await arrangeHorizontal(sortedNodes);
+      } else {
+        await arrangeVertical(sortedNodes);
+      }
+      return `Arranged ${selectedNodes.length} cards in ${direction} timeline`;
+    },
+
+    arrangeCardsKanban: async ({ columns }) => {
+      const cards = await getAllCards();
+      const columnGroups = {};
+
+      columns.forEach(col => {
+        columnGroups[col] = cards.filter(c => c.tags?.includes(col));
+      });
+
+      // Arrange each column
+      let xOffset = 100;
+      for (const col of columns) {
+        const columnCards = columnGroups[col];
+        const nodes = columnCards.map(c => {
+          return layer.find('.card').find(n => n.getAttr('cardId') === c.id);
+        }).filter(n => n);
+
+        if (nodes.length > 0) {
+          await arrangeVertical(nodes, { x: xOffset, y: 100 });
+          xOffset += 350;
+        }
+      }
+
+      return `Arranged cards in Kanban with columns: ${columns.join(', ')}`;
+    },
+
+    arrangeCardsMindMap: async () => {
+      const selectedNodes = layer.find('.selected');
+      if (selectedNodes.length === 0) return 'No cards selected';
+      await arrangeCircle(selectedNodes);
+      return `Arranged ${selectedNodes.length} cards in mind map`;
+    },
+
+    arrangeCardsCluster: async ({ method = 'tags' }) => {
+      if (method === 'ai') {
+        return 'Smart clustering (AI-baserad) är inte implementerad än. Använd method: "tags" istället.';
+      }
+      // Simple tag-based clustering
+      const cards = await getAllCards();
+      const clusters = {};
+      cards.forEach(c => {
+        const primaryTag = c.tags?.[0] || 'untagged';
+        if (!clusters[primaryTag]) clusters[primaryTag] = [];
+        clusters[primaryTag].push(c);
+      });
+
+      let xOffset = 100;
+      for (const [tag, clusterCards] of Object.entries(clusters)) {
+        const nodes = clusterCards.map(c => {
+          return layer.find('.card').find(n => n.getAttr('cardId') === c.id);
+        }).filter(n => n);
+
+        if (nodes.length > 0) {
+          await arrangeGrid(nodes, 3, { x: xOffset, y: 100 });
+          xOffset += 600;
+        }
+      }
+
+      return `Clustered cards into ${Object.keys(clusters).length} groups by tags`;
+    }
+  };
+
+  // Ask handler
+  const handleSend = async () => {
+    const query = queryInput.value.trim();
+    if (!query) return;
+
+    addMessage(query, true);
+    conversationHistory.push({ role: 'user', text: query });
+
+    queryInput.value = '';
+    askBtn.disabled = true;
+    askBtn.textContent = '...';
+
+    const thinkingMsg = addSystemMessage('💭 ChatGPT tänker...');
+
+    try {
+      const response = await executeChatGPTAgent(query, tools, toolRegistry, conversationHistory);
+
+      thinkingMsg.remove();
+
+      addMessage(response, false);
+      conversationHistory.push({ role: 'assistant', text: response });
+
+    } catch (error) {
+      console.error('ChatGPT Assistant error:', error);
+
+      thinkingMsg.remove();
+
+      addSystemMessage(`❌ Fel: ${error.message}`);
+    } finally {
+      askBtn.disabled = false;
+      askBtn.textContent = 'Skicka';
+      queryInput.focus();
+    }
+  };
+
+  askBtn.addEventListener('click', handleSend);
+
+  queryInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSend();
+    }
+  });
+}
+
+/**
  * Show command palette
  */
 function showCommandPalette() {
@@ -5187,6 +5827,9 @@ function showCommandPalette() {
     }},
     { key: 'A', icon: '🤖', name: 'Fråga Gemini', desc: 'Använd Gemini AI för att hitta, filtrera och organisera kort', action: async () => {
       await showGeminiAssistant();
+    }},
+    { key: 'C', icon: '💬', name: 'Fråga ChatGPT', desc: 'Använd ChatGPT för att hitta, filtrera och organisera kort', action: async () => {
+      await showChatGPTAssistant();
     }},
     { key: 'F', icon: '🔍', name: 'Sök kort', desc: 'Fokusera sökfältet', action: () => {
       const searchInput = document.getElementById('search-input');

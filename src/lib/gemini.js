@@ -486,3 +486,293 @@ EXEMPEL PÅ ANVÄNDNING:
 
     return 'Gemini slutade svara oväntat.';
 }
+
+// ============================================================================
+// OPENAI / CHATGPT INTEGRATION
+// ============================================================================
+
+/**
+ * Prompts the user for their OpenAI API key and saves it to localStorage.
+ * @returns {Promise<string|null>} The API key, or null if the user cancels.
+ */
+function showOpenAIAPIKeyDialog() {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+
+        dialog.innerHTML = `
+            <h2 style="margin: 0 0 20px 0; color: var(--text-primary);">💬 ChatGPT AI Assistent</h2>
+            <p style="margin: 0 0 20px 0; color: var(--text-secondary); line-height: 1.6;">
+                För att använda ChatGPT behöver du en OpenAI API-nyckel.
+            </p>
+            <p style="margin: 0 0 15px 0; color: var(--text-secondary); line-height: 1.6;">
+                <strong>Så här skaffar du en nyckel:</strong><br>
+                1. Gå till <a href="https://platform.openai.com/api-keys" target="_blank" style="color: var(--accent-color);">OpenAI Platform</a><br>
+                2. Skapa ett konto eller logga in<br>
+                3. Klicka på "Create new secret key"<br>
+                4. Klistra in nyckeln här nedan
+            </p>
+            <p style="margin: 0 0 15px 0; color: #e67e22; font-size: 13px;">
+                ⚠️ Din API-nyckel sparas endast lokalt i din webbläsare.
+            </p>
+            <input type="password" id="openaiApiKeyInput" placeholder="sk-..." style="
+                width: 100%;
+                padding: 12px;
+                border: 1px solid var(--border-color);
+                border-radius: 6px;
+                font-family: monospace;
+                font-size: 14px;
+                box-sizing: border-box;
+                margin-bottom: 20px;
+                background: var(--bg-secondary);
+                color: var(--text-primary);
+            ">
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="cancelOpenAIKey" style="
+                    padding: 10px 20px;
+                    border: 1px solid var(--border-color);
+                    background: var(--bg-secondary);
+                    color: var(--text-primary);
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                ">Avbryt</button>
+                <button id="saveOpenAIKey" style="
+                    padding: 10px 20px;
+                    border: none;
+                    background: var(--accent-color);
+                    color: white;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                ">Spara och fortsätt</button>
+            </div>
+        `;
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        const input = document.getElementById('openaiApiKeyInput');
+        input.focus();
+
+        const closeDialog = (key = null) => {
+            overlay.remove();
+            resolve(key);
+        };
+
+        document.getElementById('cancelOpenAIKey').onclick = () => closeDialog();
+
+        document.getElementById('saveOpenAIKey').onclick = () => {
+            const apiKey = input.value.trim();
+            if (apiKey) {
+                localStorage.setItem('openaiApiKey', apiKey);
+                closeDialog(apiKey);
+            } else {
+                alert('Vänligen ange en giltig API-nyckel.');
+            }
+        };
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('saveOpenAIKey').click();
+            }
+        });
+
+        overlay.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeDialog();
+            }
+        });
+    });
+}
+
+/**
+ * Retrieves the OpenAI API key from localStorage or prompts the user for it.
+ * @returns {Promise<string|null>} The API key or null.
+ */
+export async function getOpenAIAPIKey() {
+    let apiKey = localStorage.getItem('openaiApiKey');
+    if (!apiKey) {
+        apiKey = await showOpenAIAPIKeyDialog();
+    }
+    return apiKey;
+}
+
+/**
+ * Execute ChatGPT Agent with function calling capabilities
+ * @param {string} query - User's query
+ * @param {Array} tools - Array of tool definitions (Gemini format, will be converted)
+ * @param {Object} toolRegistry - Map of tool names to their implementation functions
+ * @param {Array} chatHistory - Optional conversation history [{role, text}, ...]
+ * @returns {Promise<string>} - ChatGPT's response
+ */
+export async function executeChatGPTAgent(query, tools, toolRegistry, chatHistory = []) {
+    const apiKey = await getOpenAIAPIKey();
+    if (!apiKey) {
+        throw new Error('No API key provided');
+    }
+
+    const url = 'https://api.openai.com/v1/chat/completions';
+
+    // Convert Gemini tools format to OpenAI tools format
+    const openaiTools = tools[0].functionDeclarations.map(func => ({
+        type: 'function',
+        function: {
+            name: func.name,
+            description: func.description,
+            parameters: func.parameters
+        }
+    }));
+
+    // Build conversation history
+    const messages = [
+        {
+            role: 'system',
+            content: `Du är en AI-assistent för Spatial View, en visuell digital arbetsyta för handskrivna anteckningar och idéer.
+
+DITT SYFTE:
+- Hjälpa användare att organisera, söka, och arrangera kort på en oändlig canvas
+- Analysera kort baserat på innehåll, datum, tags och metadata
+- Föreslå och utföra visuella arrangemang (mind maps, Kanban, tidslinjer, kluster, etc.)
+
+KOMMUNIKATIONSSTIL:
+- **VAR PROAKTIV**: Använd verktyg DIREKT istället för att fråga om lov
+- **AGERA, FRÅGA INTE**: Om användaren ber om något, GÖR det direkt
+- Var koncis och handlingskraftig
+- Förklara vad du GÖR (inte vad du "kan göra" eller "ska göra")
+- Använd svenska (all UI och användare är svenskspråkiga)
+
+VIKTIGT - PROAKTIVITET:
+❌ FEL: "Ska jag lista alla taggar?"
+✓ RÄTT: *Använder listAllTags direkt* "Jag hittar följande kategorier..."
+
+VERKTYG:
+Du har tillgång till flera verktyg för att söka, filtrera och arrangera kort. Använd dem direkt när användaren ber om det.`
+        }
+    ];
+
+    // Add chat history
+    chatHistory.forEach(msg => {
+        messages.push({
+            role: msg.role === 'assistant' ? 'assistant' : 'user',
+            content: msg.text
+        });
+    });
+
+    // Add current query
+    if (messages[messages.length - 1]?.content !== query) {
+        messages.push({ role: 'user', content: query });
+    }
+
+    // Initial request
+    let response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: messages,
+            tools: openaiTools,
+            tool_choice: 'auto'
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+    }
+
+    let data = await response.json();
+
+    // Handle function calls in a loop
+    let maxIterations = 10;
+    let iterations = 0;
+
+    while (iterations < maxIterations) {
+        iterations++;
+
+        const message = data.choices[0].message;
+        messages.push(message);
+
+        // Check if there are tool calls
+        if (!message.tool_calls || message.tool_calls.length === 0) {
+            // No more function calls, return the text response
+            return message.content || 'ChatGPT svarade utan text.';
+        }
+
+        // Execute all tool calls
+        for (const toolCall of message.tool_calls) {
+            const funcName = toolCall.function.name;
+            const funcArgs = JSON.parse(toolCall.function.arguments || '{}');
+
+            console.log(`Executing tool: ${funcName}`, funcArgs);
+
+            let result;
+            if (toolRegistry[funcName]) {
+                try {
+                    result = await toolRegistry[funcName](funcArgs);
+                } catch (error) {
+                    result = { error: error.message };
+                }
+            } else {
+                result = { error: `Function ${funcName} not found` };
+            }
+
+            // Add function response to messages
+            messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(result)
+            });
+        }
+
+        // Send function responses back to ChatGPT
+        response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: messages,
+                tools: openaiTools,
+                tool_choice: 'auto'
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `Follow-up request failed`);
+        }
+
+        data = await response.json();
+    }
+
+    return 'ChatGPT slutade svara oväntat (för många iterationer).';
+}
