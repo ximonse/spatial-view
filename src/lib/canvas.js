@@ -4098,6 +4098,130 @@ async function pasteImageFromClipboard() {
 // ============================================================================
 
 /**
+ * Show AI Assistant chooser (Gemini or ChatGPT)
+ */
+async function showAIChooser() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    `;
+
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border-radius: 16px;
+      padding: 30px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+
+    dialog.innerHTML = `
+      <h2 style="margin: 0 0 20px 0; text-align: center; color: var(--text-primary);">
+        Välj AI-assistent
+      </h2>
+      <p style="margin: 0 0 30px 0; text-align: center; color: var(--text-secondary);">
+        Tryck <kbd>G</kbd> för Gemini eller <kbd>C</kbd> för ChatGPT
+      </p>
+      <div style="display: flex; gap: 16px; justify-content: center;">
+        <button id="chooseGemini" style="
+          flex: 1;
+          padding: 20px;
+          background: var(--bg-secondary);
+          border: 2px solid var(--border-color);
+          border-radius: 12px;
+          cursor: pointer;
+          font-size: 16px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.2s;
+          color: var(--text-primary);
+        ">
+          <div style="font-size: 32px;">🤖</div>
+          <div style="font-weight: 500;">Gemini</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">Tryck G</div>
+        </button>
+        <button id="chooseChatGPT" style="
+          flex: 1;
+          padding: 20px;
+          background: var(--bg-secondary);
+          border: 2px solid var(--border-color);
+          border-radius: 12px;
+          cursor: pointer;
+          font-size: 16px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.2s;
+          color: var(--text-primary);
+        ">
+          <div style="font-size: 32px;">💬</div>
+          <div style="font-weight: 500;">ChatGPT</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">Tryck C</div>
+        </button>
+      </div>
+    `;
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    const geminiBtn = document.getElementById('chooseGemini');
+    const chatgptBtn = document.getElementById('chooseChatGPT');
+
+    const cleanup = (choice) => {
+      document.removeEventListener('keydown', handleKey);
+      overlay.remove();
+      resolve(choice);
+    };
+
+    const handleKey = (e) => {
+      if (e.key === 'g' || e.key === 'G') {
+        cleanup('gemini');
+      } else if (e.key === 'c' || e.key === 'C') {
+        cleanup('chatgpt');
+      } else if (e.key === 'Escape') {
+        cleanup(null);
+      }
+    };
+
+    geminiBtn.addEventListener('click', () => cleanup('gemini'));
+    chatgptBtn.addEventListener('click', () => cleanup('chatgpt'));
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) cleanup(null);
+    });
+
+    document.addEventListener('keydown', handleKey);
+
+    // Add hover effects
+    [geminiBtn, chatgptBtn].forEach(btn => {
+      btn.addEventListener('mouseenter', () => {
+        btn.style.borderColor = 'var(--accent-color)';
+        btn.style.transform = 'scale(1.05)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.borderColor = 'var(--border-color)';
+        btn.style.transform = 'scale(1)';
+      });
+    });
+  });
+}
+
+/**
  * Show Gemini Assistant dialog
  */
 async function showGeminiAssistant() {
@@ -5825,11 +5949,13 @@ function showCommandPalette() {
       await reloadCanvas();
       alert(`✅ ${imageCardIds.length} kort lästa med Gemini AI. Texten finns på baksidan - dubbelklicka och klicka "Vänd kort" för att se.`);
     }},
-    { key: 'A', icon: '🤖', name: 'Fråga Gemini', desc: 'Använd Gemini AI för att hitta, filtrera och organisera kort', action: async () => {
-      await showGeminiAssistant();
-    }},
-    { key: 'C', icon: '💬', name: 'Fråga ChatGPT', desc: 'Använd ChatGPT för att hitta, filtrera och organisera kort', action: async () => {
-      await showChatGPTAssistant();
+    { key: 'A', icon: '🤖💬', name: 'Fråga AI', desc: 'Välj Gemini (G) eller ChatGPT (C) för att organisera kort', action: async () => {
+      const choice = await showAIChooser();
+      if (choice === 'gemini') {
+        await showGeminiAssistant();
+      } else if (choice === 'chatgpt') {
+        await showChatGPTAssistant();
+      }
     }},
     { key: 'F', icon: '🔍', name: 'Sök kort', desc: 'Fokusera sökfältet', action: () => {
       const searchInput = document.getElementById('search-input');
