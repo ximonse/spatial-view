@@ -4774,6 +4774,45 @@ async function showGeminiAssistant() {
         }
       },
       {
+        name: 'arrangeCardsByDay',
+        description: 'Arrangera kort i ett VECKOSCHEMA där varje dag är en kolumn. Perfekt för att visualisera kalendern! ANVÄND för "visa som veckoschema", "organisera efter dag" eller "skapa veckovy"',
+        parameters: {
+          type: 'object',
+          properties: {
+            weeks: {
+              type: 'number',
+              description: 'Antal veckor att visa (standard: 2)'
+            },
+            useExtractedDate: {
+              type: 'boolean',
+              description: 'Använd Gemini-extraherade datum istället för skapandedatum (standard: true)'
+            }
+          }
+        }
+      },
+      {
+        name: 'colorCardsByPattern',
+        description: 'Färglägg kort baserat på textmönster. Alla kort som innehåller "lunch" får samma färg, alla "viktigt" får annan färg etc. ANVÄND för "färglägg alla lunch-möten" eller "ge alla SV-kort blå färg"',
+        parameters: {
+          type: 'object',
+          properties: {
+            patterns: {
+              type: 'array',
+              description: 'Array av mönster och färger. Exempel: [{pattern: "lunch", color: "#ffeb3b"}, {pattern: "viktigt", color: "#f44336"}, {pattern: "Ma", color: "#2196f3"}]',
+              items: {
+                type: 'object',
+                properties: {
+                  pattern: { type: 'string', description: 'Textsträng att söka efter (case-insensitive)' },
+                  color: { type: 'string', description: 'Hex-färgkod (t.ex. #ff0000 för röd)' }
+                },
+                required: ['pattern', 'color']
+              }
+            }
+          },
+          required: ['patterns']
+        }
+      },
+      {
         name: 'arrangeCardsTimeline',
         description: 'Arrangera kort kronologiskt på en tidslinje baserat på skapandedatum eller extraherade datum',
         parameters: {
@@ -5233,6 +5272,155 @@ async function showGeminiAssistant() {
       } catch (error) {
         console.error('Error creating cards from calendar:', error);
         return `Kunde inte skapa kort från kalendern: ${error.message}`;
+      }
+    },
+
+    colorCardsByPattern: async (args) => {
+      const patterns = args.patterns || []; // Array of {pattern: string, color: string}
+
+      if (patterns.length === 0) {
+        return 'Inga färg-mönster angivna. Exempel: [{pattern: "lunch", color: "#ffeb3b"}, {pattern: "viktigt", color: "#f44336"}]';
+      }
+
+      try {
+        const cards = await getAllCards();
+        let coloredCount = 0;
+        const colorSummary = {};
+
+        for (const {pattern, color} of patterns) {
+          const matchingCards = cards.filter(card => {
+            const text = (card.text || '').toLowerCase();
+            const backText = (card.backText || '').toLowerCase();
+            const tags = (card.tags || []).join(' ').toLowerCase();
+            const searchText = `${text} ${backText} ${tags}`;
+            return searchText.includes(pattern.toLowerCase());
+          });
+
+          colorSummary[pattern] = matchingCards.length;
+
+          for (const card of matchingCards) {
+            await updateCard(card.id, { color });
+            coloredCount++;
+
+            // Update visual node color
+            const node = layer.findOne(n => n.getAttr('cardId') === card.id);
+            if (node) {
+              const cardGroup = node.findOne('.card-rect');
+              if (cardGroup) {
+                cardGroup.fill(color);
+              }
+            }
+          }
+        }
+
+        layer.batchDraw();
+
+        let summary = `Färglade ${coloredCount} kort:\n`;
+        for (const [pattern, count] of Object.entries(colorSummary)) {
+          summary += `- "${pattern}": ${count} kort\n`;
+        }
+
+        return summary;
+
+      } catch (error) {
+        console.error('Error coloring cards:', error);
+        return `Kunde inte färglägga kort: ${error.message}`;
+      }
+    },
+
+    arrangeCardsByDay: async (args) => {
+      const weeks = args.weeks || 2;
+      const useExtractedDate = args.useExtractedDate !== false; // Default true
+
+      try {
+        // Get all cards
+        const cards = await getAllCards();
+
+        // Group cards by date
+        const cardsByDate = new Map();
+
+        for (const card of cards) {
+          let dateStr = null;
+
+          // Try to get date from various sources
+          if (useExtractedDate && card.geminiMetadata?.extractedDateTime) {
+            const date = new Date(card.geminiMetadata.extractedDateTime);
+            dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+          } else if (useExtractedDate && card.geminiMetadata?.extractedDate) {
+            const date = new Date(card.geminiMetadata.extractedDate);
+            dateStr = date.toISOString().split('T')[0];
+          } else if (card.created) {
+            const date = new Date(card.created);
+            dateStr = date.toISOString().split('T')[0];
+          }
+
+          if (dateStr) {
+            if (!cardsByDate.has(dateStr)) {
+              cardsByDate.set(dateStr, []);
+            }
+            cardsByDate.get(dateStr).push(card);
+          }
+        }
+
+        if (cardsByDate.size === 0) {
+          return 'Inga kort med datum hittades att arrangera.';
+        }
+
+        // Sort dates chronologically
+        const sortedDates = Array.from(cardsByDate.keys()).sort();
+
+        // Limit to requested weeks if specified
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const weeksInMs = weeks * 7 * 24 * 60 * 60 * 1000;
+        const endDate = new Date(today.getTime() + weeksInMs);
+
+        const filteredDates = sortedDates.filter(dateStr => {
+          const date = new Date(dateStr);
+          return date >= today && date <= endDate;
+        });
+
+        const datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, weeks * 7);
+
+        // Layout constants
+        const columnWidth = 250;
+        const columnSpacing = 30;
+        const cardHeight = 160;
+        const cardSpacing = 15;
+        const headerHeight = 80;
+        const startX = 50;
+        const startY = 50;
+
+        let arrangedCount = 0;
+
+        // Arrange cards in columns by day
+        datesToShow.forEach((dateStr, dayIndex) => {
+          const cardsForDay = cardsByDate.get(dateStr) || [];
+          const x = startX + dayIndex * (columnWidth + columnSpacing);
+
+          // Create date header label (we'll use a card for this)
+          const date = new Date(dateStr);
+          const dayName = date.toLocaleDateString('sv-SE', { weekday: 'short' });
+          const dateLabel = date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
+
+          cardsForDay.forEach((card, cardIndex) => {
+            const node = layer.findOne(n => n.getAttr('cardId') === card.id);
+            if (node) {
+              const y = startY + headerHeight + cardIndex * (cardHeight + cardSpacing);
+              node.position({ x, y });
+              arrangedCount++;
+            }
+          });
+        });
+
+        layer.batchDraw();
+
+        const weekCount = Math.ceil(datesToShow.length / 7);
+        return `Arrangerade ${arrangedCount} kort i ett veckoschema över ${datesToShow.length} dagar (ca ${weekCount} veckor). Varje kolumn = en dag.`;
+
+      } catch (error) {
+        console.error('Error arranging cards by day:', error);
+        return `Kunde inte arrangera kort efter dag: ${error.message}`;
       }
     },
 
@@ -5987,6 +6175,45 @@ async function showChatGPTAssistant() {
             }
           }
         }
+      },
+      {
+        name: 'arrangeCardsByDay',
+        description: 'Arrange cards in WEEKLY SCHEDULE where each day is a column. Perfect for visualizing calendar! USE THIS for "show as weekly schedule", "organize by day" or "create week view"',
+        parameters: {
+          type: 'object',
+          properties: {
+            weeks: {
+              type: 'number',
+              description: 'Number of weeks to show (default: 2)'
+            },
+            useExtractedDate: {
+              type: 'boolean',
+              description: 'Use Gemini-extracted dates instead of creation date (default: true)'
+            }
+          }
+        }
+      },
+      {
+        name: 'colorCardsByPattern',
+        description: 'Color cards based on text patterns. All cards containing "lunch" get same color, all "important" get another color etc. USE THIS for "color all lunch meetings" or "make all SV cards blue"',
+        parameters: {
+          type: 'object',
+          properties: {
+            patterns: {
+              type: 'array',
+              description: 'Array of patterns and colors. Example: [{pattern: "lunch", color: "#ffeb3b"}, {pattern: "important", color: "#f44336"}, {pattern: "Ma", color: "#2196f3"}]',
+              items: {
+                type: 'object',
+                properties: {
+                  pattern: { type: 'string', description: 'Text string to search for (case-insensitive)' },
+                  color: { type: 'string', description: 'Hex color code (e.g. #ff0000 for red)' }
+                },
+                required: ['pattern', 'color']
+              }
+            }
+          },
+          required: ['patterns']
+        }
       }
     ]
   }];
@@ -6356,6 +6583,140 @@ async function showChatGPTAssistant() {
       } catch (error) {
         console.error('Error creating cards from calendar:', error);
         return `Could not create cards from calendar: ${error.message}`;
+      }
+    },
+
+    colorCardsByPattern: async (args) => {
+      const patterns = args.patterns || [];
+
+      if (patterns.length === 0) {
+        return 'No color patterns provided. Example: [{pattern: "lunch", color: "#ffeb3b"}, {pattern: "important", color: "#f44336"}]';
+      }
+
+      try {
+        const cards = await getAllCards();
+        let coloredCount = 0;
+        const colorSummary = {};
+
+        for (const {pattern, color} of patterns) {
+          const matchingCards = cards.filter(card => {
+            const text = (card.text || '').toLowerCase();
+            const backText = (card.backText || '').toLowerCase();
+            const tags = (card.tags || []).join(' ').toLowerCase();
+            const searchText = `${text} ${backText} ${tags}`;
+            return searchText.includes(pattern.toLowerCase());
+          });
+
+          colorSummary[pattern] = matchingCards.length;
+
+          for (const card of matchingCards) {
+            await updateCard(card.id, { color });
+            coloredCount++;
+
+            const node = layer.findOne(n => n.getAttr('cardId') === card.id);
+            if (node) {
+              const cardGroup = node.findOne('.card-rect');
+              if (cardGroup) {
+                cardGroup.fill(color);
+              }
+            }
+          }
+        }
+
+        layer.batchDraw();
+
+        let summary = `Colored ${coloredCount} cards:\n`;
+        for (const [pattern, count] of Object.entries(colorSummary)) {
+          summary += `- "${pattern}": ${count} cards\n`;
+        }
+
+        return summary;
+
+      } catch (error) {
+        console.error('Error coloring cards:', error);
+        return `Could not color cards: ${error.message}`;
+      }
+    },
+
+    arrangeCardsByDay: async (args) => {
+      const weeks = args.weeks || 2;
+      const useExtractedDate = args.useExtractedDate !== false;
+
+      try {
+        const cards = await getAllCards();
+        const cardsByDate = new Map();
+
+        for (const card of cards) {
+          let dateStr = null;
+
+          if (useExtractedDate && card.geminiMetadata?.extractedDateTime) {
+            const date = new Date(card.geminiMetadata.extractedDateTime);
+            dateStr = date.toISOString().split('T')[0];
+          } else if (useExtractedDate && card.geminiMetadata?.extractedDate) {
+            const date = new Date(card.geminiMetadata.extractedDate);
+            dateStr = date.toISOString().split('T')[0];
+          } else if (card.created) {
+            const date = new Date(card.created);
+            dateStr = date.toISOString().split('T')[0];
+          }
+
+          if (dateStr) {
+            if (!cardsByDate.has(dateStr)) {
+              cardsByDate.set(dateStr, []);
+            }
+            cardsByDate.get(dateStr).push(card);
+          }
+        }
+
+        if (cardsByDate.size === 0) {
+          return 'No cards with dates found to arrange.';
+        }
+
+        const sortedDates = Array.from(cardsByDate.keys()).sort();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const weeksInMs = weeks * 7 * 24 * 60 * 60 * 1000;
+        const endDate = new Date(today.getTime() + weeksInMs);
+
+        const filteredDates = sortedDates.filter(dateStr => {
+          const date = new Date(dateStr);
+          return date >= today && date <= endDate;
+        });
+
+        const datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, weeks * 7);
+
+        const columnWidth = 250;
+        const columnSpacing = 30;
+        const cardHeight = 160;
+        const cardSpacing = 15;
+        const headerHeight = 80;
+        const startX = 50;
+        const startY = 50;
+
+        let arrangedCount = 0;
+
+        datesToShow.forEach((dateStr, dayIndex) => {
+          const cardsForDay = cardsByDate.get(dateStr) || [];
+          const x = startX + dayIndex * (columnWidth + columnSpacing);
+
+          cardsForDay.forEach((card, cardIndex) => {
+            const node = layer.findOne(n => n.getAttr('cardId') === card.id);
+            if (node) {
+              const y = startY + headerHeight + cardIndex * (cardHeight + cardSpacing);
+              node.position({ x, y });
+              arrangedCount++;
+            }
+          });
+        });
+
+        layer.batchDraw();
+
+        const weekCount = Math.ceil(datesToShow.length / 7);
+        return `Arranged ${arrangedCount} cards in weekly schedule over ${datesToShow.length} days (~${weekCount} weeks). Each column = one day.`;
+
+      } catch (error) {
+        console.error('Error arranging cards by day:', error);
+        return `Could not arrange cards by day: ${error.message}`;
       }
     }
   };
