@@ -4575,9 +4575,8 @@ async function showGeminiAssistant() {
       recognition.stop();
     }
 
-    if (overlay.parentNode) {
-      document.body.removeChild(overlay);
-    }
+    // Remove overlay
+    overlay.remove();
   };
 
   // Close button handler
@@ -4838,13 +4837,12 @@ async function showGeminiAssistant() {
       matchingIds.forEach(id => {
         const node = layer.findOne(n => n.getAttr('cardId') === id);
         if (node) {
-          node.setAttr('selected', true);
-          node.getChildren().forEach(child => {
-            if (child.className === 'Rect') {
-              child.stroke('#2196F3');
-              child.strokeWidth(3);
-            }
-          });
+          node.addName('selected'); // Add class name for consistency
+          const background = node.findOne('Rect');
+          if (background) {
+            background.stroke('#2196F3');
+            background.strokeWidth(3);
+          }
         }
       });
       layer.batchDraw();
@@ -4871,13 +4869,12 @@ async function showGeminiAssistant() {
       matchingIds.forEach(id => {
         const node = layer.findOne(n => n.getAttr('cardId') === id);
         if (node) {
-          node.setAttr('selected', true);
-          node.getChildren().forEach(child => {
-            if (child.className === 'Rect') {
-              child.stroke('#2196F3');
-              child.strokeWidth(3);
-            }
-          });
+          node.addName('selected'); // Add class name for consistency
+          const background = node.findOne('Rect');
+          if (background) {
+            background.stroke('#2196F3');
+            background.strokeWidth(3);
+          }
         }
       });
       layer.batchDraw();
@@ -4917,13 +4914,12 @@ async function showGeminiAssistant() {
       matchingIds.forEach(id => {
         const node = layer.findOne(n => n.getAttr('cardId') === id);
         if (node) {
-          node.setAttr('selected', true);
-          node.getChildren().forEach(child => {
-            if (child.className === 'Rect') {
-              child.stroke('#2196F3');
-              child.strokeWidth(3);
-            }
-          });
+          node.addName('selected'); // Add class name for consistency
+          const background = node.findOne('Rect');
+          if (background) {
+            background.stroke('#2196F3');
+            background.strokeWidth(3);
+          }
         }
       });
       layer.batchDraw();
@@ -5571,9 +5567,8 @@ async function showChatGPTAssistant() {
       recognition.stop();
     }
 
-    if (overlay.parentNode) {
-      document.body.removeChild(overlay);
-    }
+    // Remove overlay
+    overlay.remove();
   };
 
   closeBtn.addEventListener('click', cleanup);

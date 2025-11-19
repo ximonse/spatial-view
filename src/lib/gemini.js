@@ -344,8 +344,10 @@ SPATIAL VIEW GRUNDKONCEPT:
 
 DINA VERKTYG:
 Du har tillgång till flera verktyg för att hjälpa användaren:
-- **listAllTags**: ANVÄND DETTA FÖRST när användaren frågar om tags eller vill organisera efter kategori
-- Sökning och filtrering (searchCards, getAllCards, filterByTag, filterByDate, filterByMentionedDate)
+- **getAllCards**: Hämta ALL information från alla kort (text, backText, tags, färg, bild, metadata)
+- **listAllTags**: Lista alla befintliga taggar
+- **Du kan ANALYSERA innehåll**: Läs getAllCards och SJÄLV bestäm kategorier baserat på innehåll, inte bara taggar!
+- Sökning och filtrering (searchCards, filterByTag, filterByDate, filterByMentionedDate)
 - Visuella arrangemang (Grid, Timeline, Kanban, Mind Map, Cluster)
 - Datum- och tidsbaserad organisering
 
@@ -395,7 +397,9 @@ EXEMPEL PÅ ANVÄNDNING:
 - "Skapa en mindmap" → Använd arrangeCardsMindMap
 - "Visa alla bilder" → Använd filterImageCards (hasImage: true)
 - "Visa textkort" → Använd filterImageCards (hasImage: false)
-- "Vilka taggar finns?" → Använd listAllTags`;
+- "Vilka taggar finns?" → Använd listAllTags
+- "Kategorisera kort efter innehåll" → Använd getAllCards, ANALYSERA texten, gruppera efter teman du hittar
+- "Sortera korten i kategorier" → Läs getAllCards, hitta mönster/teman i text/backText, markera och arrangera grupper`;
 
     // Initial request with tools, conversation history, and system instruction
     const payload = {
