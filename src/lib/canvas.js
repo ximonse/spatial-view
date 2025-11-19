@@ -5305,20 +5305,18 @@ async function showChatGPTAssistant() {
   dialog.style.cssText = `
     background: var(--bg-primary);
     color: var(--text-primary);
-    border-radius: 16px;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 600px;
     width: 90%;
-    max-width: 700px;
-    height: 80vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-height: 70vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   `;
 
   dialog.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center;
-                padding: 20px 24px; border-bottom: 1px solid var(--border-color);">
-      <h3 style="margin: 0; font-size: 20px; color: var(--text-primary);">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h3 style="margin: 0; font-size: 20px; font-weight: 600;">
         💬 ChatGPT Chat
       </h3>
       <button id="chatgptClose" style="background: none; border: none; font-size: 24px; cursor: pointer;
@@ -5330,16 +5328,18 @@ async function showChatGPTAssistant() {
       margin-bottom: 16px;
       padding: 12px;
       background: var(--bg-secondary);
+      border-radius: 8px;
+      min-height: 300px;
+      max-height: 50vh;
       display: flex;
       flex-direction: column;
       gap: 12px;
     "></div>
     <div id="chatgptVoiceIndicator" style="
       display: none;
-      padding: 8px 16px;
-      margin: 0 16px;
-      background: #ff4444;
-      color: white;
+      padding: 8px 12px;
+      background: rgba(255, 0, 0, 0.1);
+      border: 1px solid #ff0000;
       border-radius: 8px;
       margin-bottom: 12px;
       text-align: center;
@@ -5361,6 +5361,9 @@ async function showChatGPTAssistant() {
               color: white; border: none; border-radius: 8px; cursor: pointer;
               font-size: 14px; white-space: nowrap;">Skicka</button>
     </div>
+    <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary); text-align: center;">
+      Tips: Håll 'V' för push-to-talk
+    </div>
   `;
 
   overlay.appendChild(dialog);
@@ -5376,6 +5379,9 @@ async function showChatGPTAssistant() {
 
   // Conversation history
   const conversationHistory = [];
+
+  // Focus input
+  queryInput.focus();
 
   // Voice recognition (same as Gemini)
   let recognition = null;
