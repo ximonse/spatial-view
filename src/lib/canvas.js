@@ -74,6 +74,11 @@ let clipboard = [];
  * Get card color from cardColor property
  */
 function getCardColor(cardColor) {
+  // If already a hex color, return it directly
+  if (cardColor && cardColor.startsWith('#')) {
+    return cardColor;
+  }
+
   const colorMap = {
     // Format: card-color-X
     'card-color-1': '#d4f2d4', // Grön
@@ -5038,7 +5043,7 @@ async function showGeminiAssistant() {
     },
     arrangeCardsInGrid: async (args) => {
       const columns = args.columns || 4;
-      const spacing = args.spacing || 20;
+      const spacing = args.spacing || 13;  // Reduced by 1/3 (was 20)
       const offsetX = args.offsetX || 0;
       const offsetY = args.offsetY || 0;
 
@@ -5263,9 +5268,10 @@ async function showGeminiAssistant() {
             x: 100 + (createdCount % 5) * 250, // Spread cards horizontally
             y: 100 + Math.floor(createdCount / 5) * 200,
             tags: ['calendar', 'meeting'],
-            color: event.isAllDay ? '#e3f2fd' : '#fff3e0',
+            cardColor: event.isAllDay ? '#e3f2fd' : '#fff3e0',
             calendarEventId: event.id, // Store the calendar event ID!
-            calendarEventLink: event.htmlLink
+            calendarEventLink: event.htmlLink,
+            eventDate: event.start // Store event date for sorting
           });
 
           createdCards.push(newCard);
@@ -5320,15 +5326,15 @@ async function showGeminiAssistant() {
             colorSummary[pattern] = matchingCards.length;
 
             for (const card of matchingCards) {
-              await updateCard(card.id, { color });
+              await updateCard(card.id, { cardColor: color });
               coloredCount++;
 
               // Update visual node color
               const node = layer.findOne(n => n.getAttr('cardId') === card.id);
               if (node) {
-                const cardGroup = node.findOne('.card-rect');
-                if (cardGroup) {
-                  cardGroup.fill(color);
+                const cardRect = node.findOne('Rect');
+                if (cardRect) {
+                  cardRect.fill(color);
                 }
               }
             }
@@ -5374,15 +5380,15 @@ async function showGeminiAssistant() {
           colorSummary[pattern] = matchingCards.length;
 
           for (const card of matchingCards) {
-            await updateCard(card.id, { color });
+            await updateCard(card.id, { cardColor: color });
             coloredCount++;
 
             // Update visual node color
             const node = layer.findOne(n => n.getAttr('cardId') === card.id);
             if (node) {
-              const cardGroup = node.findOne('.card-rect');
-              if (cardGroup) {
-                cardGroup.fill(color);
+              const cardRect = node.findOne('Rect');
+              if (cardRect) {
+                cardRect.fill(color);
               }
             }
           }
@@ -5418,7 +5424,11 @@ async function showGeminiAssistant() {
           let dateStr = null;
 
           // Try to get date from various sources
-          if (useExtractedDate && card.geminiMetadata?.extractedDateTime) {
+          if (card.eventDate) {
+            // Calendar event date (prioritize this)
+            const date = new Date(card.eventDate);
+            dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+          } else if (useExtractedDate && card.geminiMetadata?.extractedDateTime) {
             const date = new Date(card.geminiMetadata.extractedDateTime);
             dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
           } else if (useExtractedDate && card.geminiMetadata?.extractedDate) {
@@ -5539,7 +5549,7 @@ async function showGeminiAssistant() {
 
       const cardWidth = 200;
       const cardHeight = 150;
-      const spacing = 50;
+      const spacing = 33;  // Reduced by 1/3 (was 50)
       const totalLength = 1500; // Total timeline length in pixels
 
       if (orientation === 'horizontal') {
@@ -5698,8 +5708,8 @@ async function showGeminiAssistant() {
         }
 
         // Arrange clusters spatially
-        const clusterSpacing = 400;
-        const cardSpacing = 20;
+        const clusterSpacing = 267;  // Reduced by 1/3 (was 400)
+        const cardSpacing = 13;      // Reduced by 1/3 (was 20)
         const cardWidth = 200;
         const cardHeight = 150;
 
@@ -6649,9 +6659,10 @@ async function showChatGPTAssistant() {
             x: 100 + (createdCount % 5) * 250, // Spread cards horizontally
             y: 100 + Math.floor(createdCount / 5) * 200,
             tags: ['calendar', 'meeting'],
-            color: event.isAllDay ? '#e3f2fd' : '#fff3e0',
+            cardColor: event.isAllDay ? '#e3f2fd' : '#fff3e0',
             calendarEventId: event.id, // Store the calendar event ID!
-            calendarEventLink: event.htmlLink
+            calendarEventLink: event.htmlLink,
+            eventDate: event.start // Store event date for sorting
           });
 
           createdCards.push(newCard);
@@ -6705,14 +6716,14 @@ async function showChatGPTAssistant() {
             colorSummary[pattern] = matchingCards.length;
 
             for (const card of matchingCards) {
-              await updateCard(card.id, { color });
+              await updateCard(card.id, { cardColor: color });
               coloredCount++;
 
               const node = layer.findOne(n => n.getAttr('cardId') === card.id);
               if (node) {
-                const cardGroup = node.findOne('.card-rect');
-                if (cardGroup) {
-                  cardGroup.fill(color);
+                const cardRect = node.findOne('Rect');
+                if (cardRect) {
+                  cardRect.fill(color);
                 }
               }
             }
@@ -6758,14 +6769,14 @@ async function showChatGPTAssistant() {
           colorSummary[pattern] = matchingCards.length;
 
           for (const card of matchingCards) {
-            await updateCard(card.id, { color });
+            await updateCard(card.id, { cardColor: color });
             coloredCount++;
 
             const node = layer.findOne(n => n.getAttr('cardId') === card.id);
             if (node) {
-              const cardGroup = node.findOne('.card-rect');
-              if (cardGroup) {
-                cardGroup.fill(color);
+              const cardRect = node.findOne('Rect');
+              if (cardRect) {
+                cardRect.fill(color);
               }
             }
           }
@@ -6797,7 +6808,11 @@ async function showChatGPTAssistant() {
         for (const card of cards) {
           let dateStr = null;
 
-          if (useExtractedDate && card.geminiMetadata?.extractedDateTime) {
+          if (card.eventDate) {
+            // Calendar event date (prioritize this)
+            const date = new Date(card.eventDate);
+            dateStr = date.toISOString().split('T')[0];
+          } else if (useExtractedDate && card.geminiMetadata?.extractedDateTime) {
             const date = new Date(card.geminiMetadata.extractedDateTime);
             dateStr = date.toISOString().split('T')[0];
           } else if (useExtractedDate && card.geminiMetadata?.extractedDate) {
@@ -6834,9 +6849,9 @@ async function showChatGPTAssistant() {
         const datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, weeks * 7);
 
         const columnWidth = 250;
-        const columnSpacing = 30;
+        const columnSpacing = 20;  // Reduced by 1/3 (was 30)
         const cardHeight = 160;
-        const cardSpacing = 15;
+        const cardSpacing = 10;    // Reduced by 1/3 (was 15)
         const headerHeight = 80;
         const startX = 50;
         const startY = 50;
