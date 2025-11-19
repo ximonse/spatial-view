@@ -5080,7 +5080,7 @@ async function showGeminiAssistant() {
 
       // Arrange them in a grid
       const columns = 4;
-      const spacing = 20;
+      const spacing = 13;  // Reduced by 1/3 (was 20)
       const cardWidth = 200;
       const cardHeight = 150;
 
@@ -5126,8 +5126,8 @@ async function showGeminiAssistant() {
       const cardWidth = 200;
       const cardHeight = 150;
       const columns = 4;
-      const spacing = 20;
-      const gridGap = 100; // Space between different tag groups
+      const spacing = 13;   // Reduced by 1/3 (was 20)
+      const gridGap = 67;   // Reduced by 1/3 (was 100)
 
       let currentY = 0;
       let arrangedCount = 0;
@@ -5457,11 +5457,11 @@ async function showGeminiAssistant() {
 
         const datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, weeks * 7);
 
-        // Layout constants
+        // Layout constants (reduced spacing by 1/3)
         const columnWidth = 250;
-        const columnSpacing = 30;
+        const columnSpacing = 20;  // Reduced by 1/3 (was 30)
         const cardHeight = 160;
-        const cardSpacing = 15;
+        const cardSpacing = 10;    // Reduced by 1/3 (was 15)
         const headerHeight = 80;
         const startX = 50;
         const startY = 50;
@@ -5578,7 +5578,7 @@ async function showGeminiAssistant() {
       const cardWidth = 200;
       const cardHeight = 150;
       const columnWidth = 250;
-      const spacing = 20;
+      const spacing = 13;  // Reduced by 1/3 (was 20)
 
       // Group cards by column
       const columnGroups = columns.map(col => ({ name: col, cards: [] }));
@@ -6512,8 +6512,8 @@ async function showChatGPTAssistant() {
       const cardWidth = 200;
       const cardHeight = 150;
       const columns = 4;
-      const spacing = 20;
-      const gridGap = 100; // Space between different tag groups
+      const spacing = 13;   // Reduced by 1/3 (was 20)
+      const gridGap = 67;   // Reduced by 1/3 (was 100)
 
       let currentY = 0;
       let arrangedCount = 0;
