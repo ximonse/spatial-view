@@ -3,7 +3,14 @@
     "allow": [
       "Bash(xcopy:*)",
       "Bash(robocopy:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(nul)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(del nul 2)"
     ],
     "deny": [],
     "ask": []

@@ -2478,8 +2478,12 @@ function setupCanvasEvents() {
 
   // Global keyboard shortcuts
   window.addEventListener('keydown', async (e) => {
-    // Ignore if typing in input/textarea
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    // Ignore if typing in input/textarea (check both target and active element)
+    if (e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        document.activeElement.tagName === 'INPUT' ||
+        document.activeElement.tagName === 'TEXTAREA' ||
+        document.activeElement.isContentEditable) {
       return;
     }
 
@@ -2703,6 +2707,18 @@ function setupCanvasEvents() {
         await pasteCardsWithArrangement(arrangeCluster, 'Cluster');
       } else {
         await applyArrangement(arrangeCluster, 'Cluster');
+      }
+      return;
+    }
+
+    // A - AI Assistant chooser (Gemini or ChatGPT)
+    if (e.key === 'a' && !e.ctrlKey) {
+      e.preventDefault();
+      const choice = await showAIChooser();
+      if (choice === 'gemini') {
+        await showGeminiAssistant();
+      } else if (choice === 'chatgpt') {
+        await showChatGPTAssistant();
       }
       return;
     }
