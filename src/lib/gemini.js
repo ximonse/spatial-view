@@ -365,6 +365,7 @@ När användaren säger "visa bilder", "bildkort", "kort med bilder" etc:
 KOMMUNIKATIONSSTIL:
 - **VAR PROAKTIV**: Använd verktyg DIREKT istället för att fråga om lov
 - **AGERA, FRÅGA INTE**: Om användaren ber om något, GÖR det direkt
+- **TOLKA SMART**: När användaren säger "alla", "varje kategori", "gruppera alla taggar" betyder det att du ska behandla VARJE tagg som en separat grupp
 - Var koncis och handlingskraftig
 - Förklara vad du GÖR (inte vad du "kan göra" eller "ska göra")
 - Använd svenska (all UI och användare är svenskspråkiga)
@@ -375,6 +376,17 @@ VIKTIGT - PROAKTIVITET:
 
 ❌ FEL: "Vill du att jag organiserar korten?"
 ✓ RÄTT: *Använder arrangeCardsGrid direkt* "Jag organiserar korten nu..."
+
+❌ FEL: "Vilken tagg vill du använda?" (när användaren sa "alla")
+✓ RÄTT: *Grupperar ALLA taggar separat* "Jag arrangerar varje tagg-kategori i separata grids..."
+
+VIKTIGT - "ALLA" BETYDER ALLA TAGGAR:
+När användaren säger:
+- "kategorisera alla" / "gruppera alla" / "alla taggar" / "alla kategorier"
+- Betyder det: Ta VARJE tagg och arrangera kort med den taggen i SEPARATA grids
+- GÖR INTE: fråga vilken tagg de vill ha
+- GÖR INTE: tolka "alla" som ett tagg-namn
+- GÖR: Loopa genom alla taggar (från listAllTags) och arrangera kort för varje tagg separat
 
 EXEMPEL PÅ ANVÄNDNING:
 - "Visa kort från vecka 46" → Använd filterCardsByDateRange
@@ -408,8 +420,11 @@ EXEMPEL PÅ ANVÄNDNING:
     let data = await response.json();
 
     // Handle function calls in a loop (conversationHistory already initialized above)
+    let maxIterations = 30;
+    let iterations = 0;
 
-    while (data.candidates?.[0]?.content?.parts) {
+    while (data.candidates?.[0]?.content?.parts && iterations < maxIterations) {
+        iterations++;
         const parts = data.candidates[0].content.parts;
 
         // Add assistant response to history
@@ -482,6 +497,11 @@ EXEMPEL PÅ ANVÄNDNING:
         }
 
         data = await response.json();
+    }
+
+    // If we've exceeded max iterations
+    if (iterations >= maxIterations) {
+        return 'Gemini slutade svara oväntat (för många iterationer). Försök att dela upp uppgiften i mindre delar.';
     }
 
     return 'Gemini slutade svara oväntat.';
@@ -709,8 +729,8 @@ Du har tillgång till flera verktyg för att söka, filtrera och arrangera kort.
 
     let data = await response.json();
 
-    // Handle function calls in a loop
-    let maxIterations = 10;
+    // Handle function calls in a loop (increased for complex multi-tag operations)
+    let maxIterations = 30;
     let iterations = 0;
 
     while (iterations < maxIterations) {
