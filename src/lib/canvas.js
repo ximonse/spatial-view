@@ -25,9 +25,10 @@
  */
 
 import Konva from 'konva';
+import { marked } from 'marked';
 import { getAllCards, updateCard, createCard, deleteCard, getCard } from './storage.js';
 import { processImage } from '../utils/image-processing.js';
-import { readImageWithGemini } from './gemini.js';
+import { readImageWithGemini, executeGeminiAgent, getGoogleAIAPIKey } from './gemini.js';
 import {
   arrangeVertical,
   arrangeHorizontal,
@@ -3071,7 +3072,6 @@ Tredje kortet med kommentar
       }
 
       // Get API key
-      const { readImageWithGemini } = await import('./gemini.js');
       const apiKeyFromStorage = localStorage.getItem('googleAiApiKey');
 
       if (!apiKeyFromStorage) {
@@ -3631,8 +3631,6 @@ function escapeHTML(str) {
  * Create cards from text using Gemini to extract key quotes
  */
 export async function createCardsFromTextWithGemini() {
-  const { getGoogleAIAPIKey } = await import('./gemini.js');
-
   const apiKey = await getGoogleAIAPIKey();
   if (!apiKey) {
     console.log('Gemini text splitting cancelled: No API key provided.');
@@ -4103,8 +4101,6 @@ async function pasteImageFromClipboard() {
  * Show Gemini Assistant dialog
  */
 async function showGeminiAssistant() {
-  const { executeGeminiAgent } = await import('./gemini.js');
-
   // Create overlay
   const overlay = document.createElement('div');
   overlay.style.cssText = `
@@ -4329,6 +4325,7 @@ async function showGeminiAssistant() {
       border-radius: 12px;
       max-width: 85%;
       word-wrap: break-word;
+      line-height: 1.5;
       ${isUser ? `
         background: var(--accent-color);
         color: white;
@@ -4341,7 +4338,49 @@ async function showGeminiAssistant() {
         align-self: flex-start;
       `}
     `;
-    messageDiv.textContent = text;
+
+    // Render markdown for Gemini responses, plain text for user messages
+    if (isUser) {
+      messageDiv.textContent = text;
+    } else {
+      // Parse markdown and render as HTML
+      const htmlContent = marked.parse(text);
+      messageDiv.innerHTML = htmlContent;
+
+      // Add styling for markdown elements
+      messageDiv.querySelectorAll('p').forEach(p => p.style.margin = '0.5em 0');
+      messageDiv.querySelectorAll('ul, ol').forEach(list => {
+        list.style.marginLeft = '1.5em';
+        list.style.marginTop = '0.5em';
+        list.style.marginBottom = '0.5em';
+      });
+      messageDiv.querySelectorAll('li').forEach(li => li.style.marginBottom = '0.25em');
+      messageDiv.querySelectorAll('strong').forEach(strong => strong.style.fontWeight = 'bold');
+      messageDiv.querySelectorAll('code').forEach(code => {
+        code.style.cssText = `
+          background: var(--bg-secondary);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: monospace;
+          font-size: 0.9em;
+        `;
+      });
+      messageDiv.querySelectorAll('pre').forEach(pre => {
+        pre.style.cssText = `
+          background: var(--bg-secondary);
+          padding: 12px;
+          border-radius: 6px;
+          overflow-x: auto;
+          margin: 0.5em 0;
+        `;
+        const codeEl = pre.querySelector('code');
+        if (codeEl) {
+          codeEl.style.background = 'none';
+          codeEl.style.padding = '0';
+        }
+      });
+    }
+
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   };

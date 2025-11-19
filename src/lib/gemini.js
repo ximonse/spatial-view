@@ -126,7 +126,7 @@ AI Studio</a><br>
  * Retrieves the Google AI API key from localStorage or prompts the user for it.                                                         
  * @returns {Promise<string|null>} The API key or null.                                                                                  
  */                                                                                                                                      
-async function getGoogleAIAPIKey() {                                                                                                     
+export async function getGoogleAIAPIKey() {                                                                                                     
     let apiKey = localStorage.getItem('googleAiApiKey');                                                                                 
     if (!apiKey) {                                                                                                                       
         apiKey = await showGoogleAIAPIKeyDialog();                                                                                       
