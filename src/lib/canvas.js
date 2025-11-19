@@ -29,6 +29,7 @@ import { marked } from 'marked';
 import { getAllCards, updateCard, createCard, deleteCard, getCard } from './storage.js';
 import { processImage } from '../utils/image-processing.js';
 import { readImageWithGemini, executeGeminiAgent, getGoogleAIAPIKey, executeChatGPTAgent } from './gemini.js';
+import { getUpcomingCalendarEvents, getTodayCalendarEvents, getThisWeekCalendarEvents, formatEventsForAI } from './calendar-sync.js';
 import {
   arrangeVertical,
   arrangeHorizontal,
@@ -4731,6 +4732,48 @@ async function showGeminiAssistant() {
         }
       },
       {
+        name: 'getUpcomingCalendar',
+        description: 'Hämta kommande kalenderhändelser från Google Calendar för de närmaste veckorna. ANVÄND för att se vad användaren har för sig framöver!',
+        parameters: {
+          type: 'object',
+          properties: {
+            weeks: {
+              type: 'number',
+              description: 'Antal veckor att hämta (standard: 3)'
+            }
+          }
+        }
+      },
+      {
+        name: 'getTodayCalendar',
+        description: 'Hämta dagens kalenderhändelser från Google Calendar. ANVÄND för "vad har jag idag?" eller "dagens schema"',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'getThisWeekCalendar',
+        description: 'Hämta denna veckans kalenderhändelser från Google Calendar. ANVÄND för "hur ser min vecka ut?"',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'createCardsFromCalendar',
+        description: 'Skapa kort från Google Calendar-händelser. Skapar INTE duplicat - kollar calendarEventId. ANVÄND för "importera min kalender" eller "skapa kort från mina möten"',
+        parameters: {
+          type: 'object',
+          properties: {
+            weeks: {
+              type: 'number',
+              description: 'Antal veckor framåt att hämta händelser från (standard: 2)'
+            }
+          }
+        }
+      },
+      {
         name: 'arrangeCardsTimeline',
         description: 'Arrangera kort kronologiskt på en tidslinje baserat på skapandedatum eller extraherade datum',
         parameters: {
@@ -5076,6 +5119,121 @@ async function showGeminiAssistant() {
       layer.batchDraw();
 
       return `Arrangerade ${arrangedCount} kort i ${tags.length} tagg-grupper (vertikalt med ${gridGap}px mellanrum).`;
+    },
+
+    getUpcomingCalendar: async (args) => {
+      const weeks = args.weeks || 3;
+      try {
+        const events = await getUpcomingCalendarEvents(weeks);
+        return formatEventsForAI(events);
+      } catch (error) {
+        return `Kunde inte hämta kalenderhändelser: ${error.message}. Se till att du har kopplat Google Calendar (samma Client ID som Drive).`;
+      }
+    },
+
+    getTodayCalendar: async () => {
+      try {
+        const events = await getTodayCalendarEvents();
+        return formatEventsForAI(events);
+      } catch (error) {
+        return `Kunde inte hämta dagens händelser: ${error.message}`;
+      }
+    },
+
+    getThisWeekCalendar: async () => {
+      try {
+        const events = await getThisWeekCalendarEvents();
+        return formatEventsForAI(events);
+      } catch (error) {
+        return `Kunde inte hämta veckans händelser: ${error.message}`;
+      }
+    },
+
+    createCardsFromCalendar: async (args) => {
+      const weeks = args.weeks || 2;
+      try {
+        // Get calendar events
+        const events = await getUpcomingCalendarEvents(weeks);
+
+        if (!events || events.length === 0) {
+          return 'Inga kalenderhändelser hittades.';
+        }
+
+        // Get all existing cards
+        const existingCards = await getAllCards();
+
+        // Find which events already have cards
+        const existingEventIds = new Set(
+          existingCards
+            .filter(c => c.calendarEventId)
+            .map(c => c.calendarEventId)
+        );
+
+        // Filter to only new events
+        const newEvents = events.filter(e => !existingEventIds.has(e.id));
+
+        if (newEvents.length === 0) {
+          return `Alla ${events.length} kalenderhändelser har redan kort. Inga nya kort skapades.`;
+        }
+
+        // Create cards for new events
+        let createdCount = 0;
+        const createdCards = [];
+
+        for (const event of newEvents) {
+          const startDate = new Date(event.start);
+          const endDate = new Date(event.end);
+
+          // Format card text
+          let cardText = `📅 ${event.summary}\n\n`;
+          cardText += `⏰ ${startDate.toLocaleString('sv-SE', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}`;
+
+          if (!event.isAllDay) {
+            cardText += ` - ${endDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+          }
+
+          if (event.location) {
+            cardText += `\n📍 ${event.location}`;
+          }
+
+          if (event.description) {
+            cardText += `\n\n${event.description}`;
+          }
+
+          if (event.attendees && event.attendees.length > 0) {
+            cardText += `\n\n👥 ${event.attendees.length} deltagare`;
+          }
+
+          // Create the card
+          const newCard = await createCard({
+            text: cardText,
+            x: 100 + (createdCount % 5) * 250, // Spread cards horizontally
+            y: 100 + Math.floor(createdCount / 5) * 200,
+            tags: ['calendar', 'meeting'],
+            color: event.isAllDay ? '#e3f2fd' : '#fff3e0',
+            calendarEventId: event.id, // Store the calendar event ID!
+            calendarEventLink: event.htmlLink
+          });
+
+          createdCards.push(newCard);
+          createdCount++;
+        }
+
+        // Reload canvas to show new cards
+        await reloadCanvas();
+
+        return `Skapade ${createdCount} nya kort från kalendern (${events.length - createdCount} events hade redan kort). De nya korten är taggade med 'calendar' och 'meeting'.`;
+
+      } catch (error) {
+        console.error('Error creating cards from calendar:', error);
+        return `Kunde inte skapa kort från kalendern: ${error.message}`;
+      }
     },
 
     arrangeCardsTimeline: async (args) => {
@@ -5793,6 +5951,42 @@ async function showChatGPTAssistant() {
         name: 'arrangeAllTagsInGrids',
         description: 'Arrange ALL cards grouped by their tags in separate grids (vertically stacked). USE THIS for "sort thematically" or "group all tags". No parameters needed!',
         parameters: { type: 'object', properties: {} }
+      },
+      {
+        name: 'getUpcomingCalendar',
+        description: 'Get upcoming calendar events from Google Calendar for the next weeks. USE THIS to see what user has coming up!',
+        parameters: {
+          type: 'object',
+          properties: {
+            weeks: {
+              type: 'number',
+              description: 'Number of weeks to fetch (default: 3)'
+            }
+          }
+        }
+      },
+      {
+        name: 'getTodayCalendar',
+        description: 'Get today\'s calendar events from Google Calendar. USE THIS for "what do I have today?" or "today\'s schedule"',
+        parameters: { type: 'object', properties: {} }
+      },
+      {
+        name: 'getThisWeekCalendar',
+        description: 'Get this week\'s calendar events from Google Calendar. USE THIS for "how does my week look?"',
+        parameters: { type: 'object', properties: {} }
+      },
+      {
+        name: 'createCardsFromCalendar',
+        description: 'Create cards from Google Calendar events. Does NOT create duplicates - checks calendarEventId. USE THIS for "import my calendar" or "create cards from my meetings"',
+        parameters: {
+          type: 'object',
+          properties: {
+            weeks: {
+              type: 'number',
+              description: 'Number of weeks ahead to fetch events from (default: 2)'
+            }
+          }
+        }
       }
     ]
   }];
@@ -6048,6 +6242,121 @@ async function showChatGPTAssistant() {
       layer.batchDraw();
 
       return `Arranged ${arrangedCount} cards in ${tags.length} tag groups (vertically with ${gridGap}px spacing).`;
+    },
+
+    getUpcomingCalendar: async (args) => {
+      const weeks = args.weeks || 3;
+      try {
+        const events = await getUpcomingCalendarEvents(weeks);
+        return formatEventsForAI(events);
+      } catch (error) {
+        return `Could not fetch calendar events: ${error.message}. Make sure you have connected Google Calendar (same Client ID as Drive).`;
+      }
+    },
+
+    getTodayCalendar: async () => {
+      try {
+        const events = await getTodayCalendarEvents();
+        return formatEventsForAI(events);
+      } catch (error) {
+        return `Could not fetch today's events: ${error.message}`;
+      }
+    },
+
+    getThisWeekCalendar: async () => {
+      try {
+        const events = await getThisWeekCalendarEvents();
+        return formatEventsForAI(events);
+      } catch (error) {
+        return `Could not fetch this week's events: ${error.message}`;
+      }
+    },
+
+    createCardsFromCalendar: async (args) => {
+      const weeks = args.weeks || 2;
+      try {
+        // Get calendar events
+        const events = await getUpcomingCalendarEvents(weeks);
+
+        if (!events || events.length === 0) {
+          return 'No calendar events found.';
+        }
+
+        // Get all existing cards
+        const existingCards = await getAllCards();
+
+        // Find which events already have cards
+        const existingEventIds = new Set(
+          existingCards
+            .filter(c => c.calendarEventId)
+            .map(c => c.calendarEventId)
+        );
+
+        // Filter to only new events
+        const newEvents = events.filter(e => !existingEventIds.has(e.id));
+
+        if (newEvents.length === 0) {
+          return `All ${events.length} calendar events already have cards. No new cards created.`;
+        }
+
+        // Create cards for new events
+        let createdCount = 0;
+        const createdCards = [];
+
+        for (const event of newEvents) {
+          const startDate = new Date(event.start);
+          const endDate = new Date(event.end);
+
+          // Format card text
+          let cardText = `📅 ${event.summary}\n\n`;
+          cardText += `⏰ ${startDate.toLocaleString('sv-SE', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}`;
+
+          if (!event.isAllDay) {
+            cardText += ` - ${endDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`;
+          }
+
+          if (event.location) {
+            cardText += `\n📍 ${event.location}`;
+          }
+
+          if (event.description) {
+            cardText += `\n\n${event.description}`;
+          }
+
+          if (event.attendees && event.attendees.length > 0) {
+            cardText += `\n\n👥 ${event.attendees.length} deltagare`;
+          }
+
+          // Create the card
+          const newCard = await createCard({
+            text: cardText,
+            x: 100 + (createdCount % 5) * 250, // Spread cards horizontally
+            y: 100 + Math.floor(createdCount / 5) * 200,
+            tags: ['calendar', 'meeting'],
+            color: event.isAllDay ? '#e3f2fd' : '#fff3e0',
+            calendarEventId: event.id, // Store the calendar event ID!
+            calendarEventLink: event.htmlLink
+          });
+
+          createdCards.push(newCard);
+          createdCount++;
+        }
+
+        // Reload canvas to show new cards
+        await reloadCanvas();
+
+        return `Created ${createdCount} new cards from calendar (${events.length - createdCount} events already had cards). New cards are tagged with 'calendar' and 'meeting'.`;
+
+      } catch (error) {
+        console.error('Error creating cards from calendar:', error);
+        return `Could not create cards from calendar: ${error.message}`;
+      }
     }
   };
 
