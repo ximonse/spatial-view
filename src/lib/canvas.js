@@ -4791,6 +4791,14 @@ async function showGeminiAssistant() {
         }
       },
       {
+        name: 'applySchoolColorScheme',
+        description: 'Tillämpa FÖRINSTÄLLT färgschema för SKOLÄMNEN. Ma=blå, SV=gul, Eng=röd, lunch=vit, etc. ANVÄND ALLTID denna för skolschema! ANVÄND för "färglägg schemat", "applicera färger" eller efter att ha importerat kalender',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
         name: 'colorCardsByPattern',
         description: 'Färglägg kort baserat på textmönster. Alla kort som innehåller "lunch" får samma färg, alla "viktigt" får annan färg etc. ANVÄND för "färglägg alla lunch-möten" eller "ge alla SV-kort blå färg"',
         parameters: {
@@ -5272,6 +5280,73 @@ async function showGeminiAssistant() {
       } catch (error) {
         console.error('Error creating cards from calendar:', error);
         return `Kunde inte skapa kort från kalendern: ${error.message}`;
+      }
+    },
+
+    applySchoolColorScheme: async () => {
+      // Preset color scheme for school subjects
+      const schoolColors = [
+        {pattern: "Ma", color: "#2196f3"},        // Matematik - blå
+        {pattern: "lunch", color: "#ffffff"},     // Lunch - vit
+        {pattern: "SV", color: "#ffeb3b"},        // Svenska - gul
+        {pattern: "No", color: "#4caf50"},        // NO - grön
+        {pattern: "Bi", color: "#9c27b0"},        // Biologi - lila
+        {pattern: "Tk", color: "#9e9e9e"},        // Teknik - grå
+        {pattern: "Eng", color: "#f44336"},       // Engelska - röd
+        {pattern: "Spanska", color: "#ff9800"},   // Spanska - orange
+        {pattern: "språk", color: "#ff9800"},     // språk - orange
+        {pattern: "IDH", color: "#e91e63"},       // Idrott - rosa
+        {pattern: "SO", color: "#ef9a9a"},        // SO - ljusröd
+        {pattern: "Sl", color: "#fff59d"},        // Slöjd - ljusgul
+        {pattern: "Mu", color: "#a5d6a7"},        // Musik - ljusgrön
+        {pattern: "HKK", color: "#a5d6a7"}        // HKK - ljusgrön
+      ];
+
+      try {
+        const cards = await getAllCards();
+        let coloredCount = 0;
+        const colorSummary = {};
+
+        for (const {pattern, color} of schoolColors) {
+          const matchingCards = cards.filter(card => {
+            const text = (card.text || '').toLowerCase();
+            const backText = (card.backText || '').toLowerCase();
+            const tags = (card.tags || []).join(' ').toLowerCase();
+            const searchText = `${text} ${backText} ${tags}`;
+            return searchText.includes(pattern.toLowerCase());
+          });
+
+          if (matchingCards.length > 0) {
+            colorSummary[pattern] = matchingCards.length;
+
+            for (const card of matchingCards) {
+              await updateCard(card.id, { color });
+              coloredCount++;
+
+              // Update visual node color
+              const node = layer.findOne(n => n.getAttr('cardId') === card.id);
+              if (node) {
+                const cardGroup = node.findOne('.card-rect');
+                if (cardGroup) {
+                  cardGroup.fill(color);
+                }
+              }
+            }
+          }
+        }
+
+        layer.batchDraw();
+
+        let summary = `Tillämpade skolfärgschema på ${coloredCount} kort:\n`;
+        for (const [pattern, count] of Object.entries(colorSummary)) {
+          summary += `- ${pattern}: ${count} kort\n`;
+        }
+
+        return summary;
+
+      } catch (error) {
+        console.error('Error applying school color scheme:', error);
+        return `Kunde inte tillämpa färgschema: ${error.message}`;
       }
     },
 
@@ -6194,6 +6269,14 @@ async function showChatGPTAssistant() {
         }
       },
       {
+        name: 'applySchoolColorScheme',
+        description: 'Apply PRESET color scheme for SCHOOL SUBJECTS. Ma=blue, SV=yellow, Eng=red, lunch=white, etc. ALWAYS USE this for school schedule! USE for "color the schedule", "apply colors" or after importing calendar',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
         name: 'colorCardsByPattern',
         description: 'Color cards based on text patterns. All cards containing "lunch" get same color, all "important" get another color etc. USE THIS for "color all lunch meetings" or "make all SV cards blue"',
         parameters: {
@@ -6583,6 +6666,71 @@ async function showChatGPTAssistant() {
       } catch (error) {
         console.error('Error creating cards from calendar:', error);
         return `Could not create cards from calendar: ${error.message}`;
+      }
+    },
+
+    applySchoolColorScheme: async () => {
+      const schoolColors = [
+        {pattern: "Ma", color: "#2196f3"},
+        {pattern: "lunch", color: "#ffffff"},
+        {pattern: "SV", color: "#ffeb3b"},
+        {pattern: "No", color: "#4caf50"},
+        {pattern: "Bi", color: "#9c27b0"},
+        {pattern: "Tk", color: "#9e9e9e"},
+        {pattern: "Eng", color: "#f44336"},
+        {pattern: "Spanska", color: "#ff9800"},
+        {pattern: "språk", color: "#ff9800"},
+        {pattern: "IDH", color: "#e91e63"},
+        {pattern: "SO", color: "#ef9a9a"},
+        {pattern: "Sl", color: "#fff59d"},
+        {pattern: "Mu", color: "#a5d6a7"},
+        {pattern: "HKK", color: "#a5d6a7"}
+      ];
+
+      try {
+        const cards = await getAllCards();
+        let coloredCount = 0;
+        const colorSummary = {};
+
+        for (const {pattern, color} of schoolColors) {
+          const matchingCards = cards.filter(card => {
+            const text = (card.text || '').toLowerCase();
+            const backText = (card.backText || '').toLowerCase();
+            const tags = (card.tags || []).join(' ').toLowerCase();
+            const searchText = `${text} ${backText} ${tags}`;
+            return searchText.includes(pattern.toLowerCase());
+          });
+
+          if (matchingCards.length > 0) {
+            colorSummary[pattern] = matchingCards.length;
+
+            for (const card of matchingCards) {
+              await updateCard(card.id, { color });
+              coloredCount++;
+
+              const node = layer.findOne(n => n.getAttr('cardId') === card.id);
+              if (node) {
+                const cardGroup = node.findOne('.card-rect');
+                if (cardGroup) {
+                  cardGroup.fill(color);
+                }
+              }
+            }
+          }
+        }
+
+        layer.batchDraw();
+
+        let summary = `Applied school color scheme to ${coloredCount} cards:\n`;
+        for (const [pattern, count] of Object.entries(colorSummary)) {
+          summary += `- ${pattern}: ${count} cards\n`;
+        }
+
+        return summary;
+
+      } catch (error) {
+        console.error('Error applying school color scheme:', error);
+        return `Could not apply color scheme: ${error.message}`;
       }
     },
 
