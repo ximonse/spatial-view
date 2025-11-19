@@ -4255,38 +4255,49 @@ async function showAIChooser() {
  * Show Gemini Assistant dialog
  */
 async function showGeminiAssistant() {
-  // Create overlay
-  const overlay = document.createElement('div');
-  overlay.style.cssText = `
+  // Create side panel (no overlay, user can see canvas)
+  const panel = document.createElement('div');
+  panel.id = 'geminiPanel';
+  panel.style.cssText = `
     position: fixed;
+    right: 0;
     top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 10000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  `;
-
-  // Create dialog
-  const dialog = document.createElement('div');
-  dialog.style.cssText = `
+    height: 100vh;
+    width: 400px;
+    max-width: 90vw;
     background: var(--bg-primary);
     color: var(--text-primary);
-    padding: 24px;
-    border-radius: 12px;
-    max-width: 600px;
-    width: 90%;
-    max-height: 70vh;
-    overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
   `;
 
-  dialog.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-      <h3 style="margin: 0; font-size: 20px; font-weight: 600;">
+  // Mobile: bottom panel instead
+  if (window.innerWidth < 768 || (window.innerWidth < 1024 && window.innerHeight > window.innerWidth)) {
+    panel.style.cssText = `
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60vh;
+      max-height: 80vh;
+      width: 100%;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+      border-radius: 16px 16px 0 0;
+    `;
+  }
+
+  panel.innerHTML = `
+    <div style="padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 600;">
         🤖 Gemini Chat
       </h3>
       <button id="geminiClose" style="background: none; border: none; font-size: 24px; cursor: pointer;
@@ -4295,12 +4306,7 @@ async function showGeminiAssistant() {
     <div id="chatMessages" style="
       flex: 1;
       overflow-y: auto;
-      margin-bottom: 16px;
-      padding: 12px;
-      background: var(--bg-secondary);
-      border-radius: 8px;
-      min-height: 300px;
-      max-height: 50vh;
+      padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -4308,17 +4314,18 @@ async function showGeminiAssistant() {
     <div id="voiceIndicator" style="
       display: none;
       padding: 8px 12px;
+      margin: 0 16px;
       background: rgba(255, 0, 0, 0.1);
       border: 1px solid #ff0000;
       border-radius: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       text-align: center;
       font-size: 14px;
     ">
       🔴 Lyssnar... <span id="voiceTranscript" style="font-style: italic;"></span>
     </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <input type="text" id="geminiQuery" placeholder="Skriv ditt meddelande eller håll 'V' för röst..."
+    <div id="inputArea" style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; align-items: center;">
+      <input type="text" id="geminiQuery" placeholder="Skriv eller håll 'V' för röst..."
         style="flex: 1; padding: 12px; font-size: 14px;
                border: 2px solid var(--border-color); border-radius: 8px;
                background: var(--bg-secondary); color: var(--text-primary);
@@ -4327,17 +4334,13 @@ async function showGeminiAssistant() {
               color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 8px;
               cursor: pointer; font-size: 20px; line-height: 1; width: 48px; height: 48px;
               display: flex; align-items: center; justify-content: center;">🎤</button>
-      <button id="geminiAsk" style="padding: 12px 24px; background: var(--accent-color);
+      <button id="geminiAsk" style="padding: 12px 20px; background: var(--accent-color);
               color: white; border: none; border-radius: 8px; cursor: pointer;
               font-size: 14px; white-space: nowrap;">Skicka</button>
     </div>
-    <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary); text-align: center;">
-      Tips: Håll 'V' för push-to-talk
-    </div>
   `;
 
-  overlay.appendChild(dialog);
-  document.body.appendChild(overlay);
+  document.body.appendChild(panel);
 
   const queryInput = document.getElementById('geminiQuery');
   const chatMessages = document.getElementById('chatMessages');
@@ -4371,6 +4374,10 @@ async function showGeminiAssistant() {
       voiceBtn.style.background = '#ff0000';
       voiceBtn.style.color = 'white';
       voiceBtn.textContent = '🔴';
+
+      // Minimize input area (hide keyboard)
+      const inputArea = document.getElementById('inputArea');
+      inputArea.style.display = 'none';
     };
 
     recognition.onresult = (event) => {
@@ -4390,6 +4397,10 @@ async function showGeminiAssistant() {
       voiceBtn.style.color = 'var(--text-primary)';
       voiceBtn.textContent = '🎤';
 
+      // Restore input area
+      const inputArea = document.getElementById('inputArea');
+      inputArea.style.display = 'flex';
+
       // Auto-send if we have text
       if (queryInput.value.trim()) {
         setTimeout(() => handleSend(), 300);
@@ -4403,6 +4414,10 @@ async function showGeminiAssistant() {
       voiceBtn.style.background = 'var(--bg-secondary)';
       voiceBtn.style.color = 'var(--text-primary)';
       voiceBtn.textContent = '🎤';
+
+      // Restore input area
+      const inputArea = document.getElementById('inputArea');
+      inputArea.style.display = 'flex';
 
       if (event.error === 'no-speech') {
         addSystemMessage('⚠️ Ingen röst hördes. Försök igen.');
@@ -4575,15 +4590,12 @@ async function showGeminiAssistant() {
       recognition.stop();
     }
 
-    // Remove overlay
-    overlay.remove();
+    // Remove panel
+    panel.remove();
   };
 
   // Close button handler
   closeBtn.addEventListener('click', cleanup);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) cleanup();
-  });
 
   // Add Escape key listener
   document.addEventListener('keydown', handleEscape);
@@ -5279,40 +5291,49 @@ async function showGeminiAssistant() {
  * Show ChatGPT Assistant dialog
  */
 async function showChatGPTAssistant() {
-  // Reuse the same dialog structure as Gemini, but with ChatGPT
-  // This is almost identical to showGeminiAssistant but uses executeChatGPTAgent
-
-  // Create overlay
-  const overlay = document.createElement('div');
-  overlay.style.cssText = `
+  // Create side panel (no overlay, user can see canvas) - same as Gemini
+  const panel = document.createElement('div');
+  panel.id = 'chatgptPanel';
+  panel.style.cssText = `
     position: fixed;
+    right: 0;
     top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 10000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  `;
-
-  const dialog = document.createElement('div');
-  dialog.style.cssText = `
+    height: 100vh;
+    width: 400px;
+    max-width: 90vw;
     background: var(--bg-primary);
     color: var(--text-primary);
-    padding: 24px;
-    border-radius: 12px;
-    max-width: 600px;
-    width: 90%;
-    max-height: 70vh;
-    overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
   `;
 
-  dialog.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-      <h3 style="margin: 0; font-size: 20px; font-weight: 600;">
+  // Mobile: bottom panel instead
+  if (window.innerWidth < 768 || (window.innerWidth < 1024 && window.innerHeight > window.innerWidth)) {
+    panel.style.cssText = `
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60vh;
+      max-height: 80vh;
+      width: 100%;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+      border-radius: 16px 16px 0 0;
+    `;
+  }
+
+  panel.innerHTML = `
+    <div style="padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 600;">
         💬 ChatGPT Chat
       </h3>
       <button id="chatgptClose" style="background: none; border: none; font-size: 24px; cursor: pointer;
@@ -5321,12 +5342,7 @@ async function showChatGPTAssistant() {
     <div id="chatgptMessages" style="
       flex: 1;
       overflow-y: auto;
-      margin-bottom: 16px;
-      padding: 12px;
-      background: var(--bg-secondary);
-      border-radius: 8px;
-      min-height: 300px;
-      max-height: 50vh;
+      padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -5334,17 +5350,18 @@ async function showChatGPTAssistant() {
     <div id="chatgptVoiceIndicator" style="
       display: none;
       padding: 8px 12px;
+      margin: 0 16px;
       background: rgba(255, 0, 0, 0.1);
       border: 1px solid #ff0000;
       border-radius: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       text-align: center;
       font-size: 14px;
     ">
       🔴 Lyssnar... <span id="chatgptVoiceTranscript" style="font-style: italic;"></span>
     </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <input type="text" id="chatgptQuery" placeholder="Skriv ditt meddelande eller håll 'V' för röst..."
+    <div id="chatgptInputArea" style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; align-items: center;">
+      <input type="text" id="chatgptQuery" placeholder="Skriv eller håll 'V' för röst..."
         style="flex: 1; padding: 12px; font-size: 14px;
                border: 2px solid var(--border-color); border-radius: 8px;
                background: var(--bg-secondary); color: var(--text-primary);
@@ -5353,17 +5370,13 @@ async function showChatGPTAssistant() {
               color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 8px;
               cursor: pointer; font-size: 20px; line-height: 1; width: 48px; height: 48px;
               display: flex; align-items: center; justify-content: center;">🎤</button>
-      <button id="chatgptAsk" style="padding: 12px 24px; background: var(--accent-color);
+      <button id="chatgptAsk" style="padding: 12px 20px; background: var(--accent-color);
               color: white; border: none; border-radius: 8px; cursor: pointer;
               font-size: 14px; white-space: nowrap;">Skicka</button>
     </div>
-    <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary); text-align: center;">
-      Tips: Håll 'V' för push-to-talk
-    </div>
   `;
 
-  overlay.appendChild(dialog);
-  document.body.appendChild(overlay);
+  document.body.appendChild(panel);
 
   const queryInput = document.getElementById('chatgptQuery');
   const chatMessages = document.getElementById('chatgptMessages');
@@ -5394,6 +5407,10 @@ async function showChatGPTAssistant() {
       isRecording = true;
       voiceIndicator.style.display = 'block';
       voiceTranscript.textContent = '';
+
+      // Minimize input area (hide keyboard)
+      const inputArea = document.getElementById('chatgptInputArea');
+      inputArea.style.display = 'none';
     };
 
     recognition.onresult = (event) => {
@@ -5411,12 +5428,21 @@ async function showChatGPTAssistant() {
     recognition.onend = () => {
       isRecording = false;
       voiceIndicator.style.display = 'none';
+
+      // Restore input area
+      const inputArea = document.getElementById('chatgptInputArea');
+      inputArea.style.display = 'flex';
     };
 
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       voiceIndicator.style.display = 'none';
       isRecording = false;
+
+      // Restore input area
+      const inputArea = document.getElementById('chatgptInputArea');
+      inputArea.style.display = 'flex';
+
       if (event.error === 'not-allowed') {
         addSystemMessage('❌ Mikrofon-tillstånd nekades. Aktivera i webbläsaren.');
       }
@@ -5567,14 +5593,11 @@ async function showChatGPTAssistant() {
       recognition.stop();
     }
 
-    // Remove overlay
-    overlay.remove();
+    // Remove panel
+    panel.remove();
   };
 
   closeBtn.addEventListener('click', cleanup);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) cleanup();
-  });
 
   document.addEventListener('keydown', handleEscape);
 
