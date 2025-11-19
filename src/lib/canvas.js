@@ -59,6 +59,9 @@ let undoStack = [];
 let redoStack = [];
 const MAX_UNDO_STACK = 50;
 
+// Track newly created cards to merge with first edit
+let pendingCreateMerge = new Map(); // cardId -> create action
+
 // Clipboard for copy/paste
 let clipboard = [];
 
@@ -763,12 +766,13 @@ async function createNewCard(position) {
 
   const cardId = await createCard(cardData);
 
-  // Add to undo stack
-  pushUndo({
+  // Mark this card for merge with first edit
+  const createAction = {
     type: 'create',
     cardId,
     card: cardData
-  });
+  };
+  pendingCreateMerge.set(cardId, createAction);
 
   // Reload canvas to show new card
   await reloadCanvas();
@@ -1002,12 +1006,22 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
         updates.cardColor = selectedColor;
       }
 
-      pushUndo({
-        type: 'update',
-        cardId,
-        oldData: { text: currentText, tags: currentTags, cardColor: currentColor, comments: currentComments },
-        newData: updates
-      });
+      // Check if this is first edit after create - merge them
+      if (pendingCreateMerge.has(cardId)) {
+        const createAction = pendingCreateMerge.get(cardId);
+        // Update the create action's card data with the new values
+        createAction.card = { ...createAction.card, ...updates };
+        pushUndo(createAction);
+        pendingCreateMerge.delete(cardId);
+      } else {
+        // Normal update
+        pushUndo({
+          type: 'update',
+          cardId,
+          oldData: { text: currentText, tags: currentTags, cardColor: currentColor, comments: currentComments },
+          newData: updates
+        });
+      }
 
       await updateCard(cardId, updates);
       await reloadCanvas();
