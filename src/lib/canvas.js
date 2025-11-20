@@ -80,26 +80,27 @@ function getCardColor(cardColor) {
   }
 
   const colorMap = {
-    // Format: card-color-X
-    'card-color-1': '#d4f2d4', // Grön
-    'card-color-2': '#ffe4b3', // Orange
-    'card-color-3': '#ffc1cc', // Röd
-    'card-color-4': '#fff7b3', // Gul
-    'card-color-5': '#f3e5f5', // Lila
-    'card-color-6': '#c7e7ff', // Blå
-    'card-color-7': '#e0e0e0', // Grå
-    'card-color-8': '#ffffff', // Vit
+    // Zotero-färger (från highlight-systemet)
+    'card-color-1': '#ffd400', // Gul
+    'card-color-2': '#ff6666', // Röd
+    'card-color-3': '#5fb236', // Grön
+    'card-color-4': '#2ea8e5', // Blå
+    'card-color-5': '#a28ae5', // Lila
+    'card-color-6': '#e56eee', // Magenta
+    'card-color-7': '#f19837', // Orange
+    'card-color-8': '#aaaaaa', // Grå
 
-    // Format: color names (för bakåtkompatibilitet och import)
-    'green': '#d4f2d4',
-    'orange': '#ffe4b3',
-    'pink': '#ffc1cc',
-    'red': '#ffc1cc',
-    'yellow': '#fff7b3',
-    'purple': '#f3e5f5',
-    'blue': '#c7e7ff',
-    'gray': '#e0e0e0',
-    'grey': '#e0e0e0',
+    // Format: color names (för bakåtkompatibilitet)
+    'yellow': '#ffd400',
+    'red': '#ff6666',
+    'green': '#5fb236',
+    'blue': '#2ea8e5',
+    'purple': '#a28ae5',
+    'magenta': '#e56eee',
+    'pink': '#e56eee',
+    'orange': '#f19837',
+    'gray': '#aaaaaa',
+    'grey': '#aaaaaa',
     'white': '#ffffff'
   };
 

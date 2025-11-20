@@ -1,0 +1,623 @@
+{
+  "cards": [
+    {
+      "text": "Pythagoras sats: a² + b² = c² där c är hypotenusan",
+      "tags": [
+        "matematik",
+        "geometri",
+        "formler",
+        "pythagoras"
+      ],
+      "cardColor": "#2ea8e5",
+      "comments": "Viktig formel för geometri-provet nästa vecka",
+      "geminiMetadata": {
+        "extractedDate": "2024-11-28"
+      },
+      "position": {
+        "x": 150,
+        "y": 120
+      }
+    },
+    {
+      "text": "📅 Veckomöte - Team Planning\n⏰ 2024-11-21 10:00-11:30\n📍 Konferensrum A",
+      "tags": [
+        "arbete",
+        "möte",
+        "planering",
+        "agilt"
+      ],
+      "cardColor": "#2ea8e5",
+      "comments": "Förbered statusuppdatering",
+      "geminiMetadata": {
+        "extractedDateTime": "2024-11-21T10:00:00"
+      },
+      "eventDate": "2024-11-21T10:00:00",
+      "calendarEventId": "evt_12345",
+      "position": {
+        "x": 320,
+        "y": 150
+      }
+    },
+    {
+      "text": "Zettelkasten Principle: Atomic Notes\n\nEtt kort = EN idé. Kort ska vara självständiga och återanvändbara.",
+      "tags": [
+        "zettelkasten",
+        "anteckningar",
+        "metodik",
+        "PKM"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Grundprincip för mitt anteckningssystem",
+      "position": {
+        "x": 180,
+        "y": 280
+      }
+    },
+    {
+      "text": "🎯 PROJEKTIDÉ: AI-driven lärandeassistent\n\nBygg app som anpassar lärandeinnehåll baserat på elevens framsteg",
+      "tags": [
+        "projekt",
+        "AI",
+        "edtech",
+        "idé",
+        "planering"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Potentiellt examensarbete?",
+      "position": {
+        "x": 450,
+        "y": 200
+      }
+    },
+    {
+      "text": "Engelska glosor - Vecka 47\n\nabstain = avhålla sig\nbenevolent = välvillig\ncontemplate = begrunda\ndiligent = flitig",
+      "tags": [
+        "engelska",
+        "glosor",
+        "ordförråd",
+        "vecka47"
+      ],
+      "cardColor": "#ff6666",
+      "comments": "Prov på fredag!",
+      "geminiMetadata": {
+        "extractedDate": "2024-11-22"
+      },
+      "position": {
+        "x": 220,
+        "y": 420
+      }
+    },
+    {
+      "text": "💡 Research Question:\n\nHur påverkar visuell layout långtidsminne jämfört med linjära anteckningar?",
+      "tags": [
+        "forskning",
+        "kognition",
+        "minne",
+        "spatial",
+        "hypotes"
+      ],
+      "cardColor": "#a28ae5",
+      "comments": "Potentiell forskningsfråga för masteruppsats",
+      "position": {
+        "x": 380,
+        "y": 340
+      }
+    },
+    {
+      "text": "Svenska: Retoriska stilfigurer\n\nMetafor - jämförelse utan 'som'\nLikelse - jämförelse med 'som'\nPersonifiering - ge livlösa ting liv\nHyperbol - överdrift",
+      "tags": [
+        "svenska",
+        "retorik",
+        "stilfigurer",
+        "språk"
+      ],
+      "cardColor": "#ffd400",
+      "comments": "För essäskrivning",
+      "position": {
+        "x": 140,
+        "y": 560
+      }
+    },
+    {
+      "text": "🔴 DEADLINE: Projektrapport\n📅 2024-11-30 23:59\n\nStatus: 60% klar\nKvar: Metod + Diskussion",
+      "tags": [
+        "deadline",
+        "projekt",
+        "rapport",
+        "viktigt"
+      ],
+      "cardColor": "#ff6666",
+      "comments": "SUPER VIKTIGT - glöm inte!",
+      "geminiMetadata": {
+        "extractedDate": "2024-11-30"
+      },
+      "position": {
+        "x": 500,
+        "y": 120
+      }
+    },
+    {
+      "text": "Lunch med Emma\n🍕 Pizza Hut, 12:00",
+      "tags": [
+        "lunch",
+        "social",
+        "emma"
+      ],
+      "cardColor": "#ffffff",
+      "geminiMetadata": {
+        "extractedDateTime": "2024-11-21T12:00:00"
+      },
+      "position": {
+        "x": 340,
+        "y": 480
+      }
+    },
+    {
+      "text": "NO - Fotosyntesen\n\n6CO₂ + 6H₂O + ljus → C₆H₁₂O₆ + 6O₂\n\nKoldioxid + Vatten → Glukos + Syre",
+      "tags": [
+        "NO",
+        "biologi",
+        "fotosyntesen",
+        "kemi"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Läs mer om Calvincykeln",
+      "position": {
+        "x": 190,
+        "y": 700
+      }
+    },
+    {
+      "text": "📚 Boklista - Sommarläsning\n\n1. Sapiens - Yuval Harari\n2. Thinking Fast and Slow - Kahneman\n3. Deep Work - Cal Newport\n4. Atomic Habits - James Clear",
+      "tags": [
+        "böcker",
+        "läsning",
+        "självutveckling",
+        "lista"
+      ],
+      "cardColor": "#ffd400",
+      "comments": "Börja med Sapiens",
+      "position": {
+        "x": 420,
+        "y": 550
+      }
+    },
+    {
+      "text": "Teknik: Hållbar energi\n\nVindkraft:\n+ Förnybar\n+ Inga utsläpp\n- Intermittent\n- Visuell påverkan",
+      "tags": [
+        "teknik",
+        "energi",
+        "miljö",
+        "hållbarhet"
+      ],
+      "cardColor": "#aaaaaa",
+      "comments": "För presentation nästa vecka",
+      "position": {
+        "x": 260,
+        "y": 840
+      }
+    },
+    {
+      "text": "💪 Träningsrutin - Vecka 47\n\nMåndag: Överkropp\nOnsdag: Löpning 5km\nFredag: Benkropp\nLördag: Yoga",
+      "tags": [
+        "träning",
+        "hälsa",
+        "rutin",
+        "fitness"
+      ],
+      "cardColor": "#e56eee",
+      "comments": "Öka vikter nästa månad",
+      "position": {
+        "x": 540,
+        "y": 400
+      }
+    },
+    {
+      "text": "SO - Franska revolutionen 1789\n\nOrsaker:\n- Ekonomisk kris\n- Sociala orättvisor\n- Upplysningstänkande",
+      "tags": [
+        "SO",
+        "historia",
+        "frankrike",
+        "revolution"
+      ],
+      "cardColor": "#ff6666",
+      "comments": "Viktigt för historieprovet",
+      "geminiMetadata": {
+        "extractedDate": "1789-07-14"
+      },
+      "position": {
+        "x": 300,
+        "y": 980
+      }
+    },
+    {
+      "text": "🎨 Design Principles - UX\n\n1. Consistency\n2. Feedback\n3. Affordance\n4. Simplicity",
+      "tags": [
+        "design",
+        "UX",
+        "principer",
+        "gränssnitt"
+      ],
+      "cardColor": "#a28ae5",
+      "comments": "Applicera på mitt projekt",
+      "position": {
+        "x": 160,
+        "y": 1120
+      }
+    },
+    {
+      "text": "Spanska - Verb conjugation: Hablar (prata)\n\nPresent:\nYo hablo\nTú hablas\nÉl/ella habla\nNosotros hablamos\nVosotros habláis\nEllos hablan",
+      "tags": [
+        "spanska",
+        "grammatik",
+        "verb",
+        "språk"
+      ],
+      "cardColor": "#f19837",
+      "comments": "Öva konjugering dagligen",
+      "position": {
+        "x": 430,
+        "y": 720
+      }
+    },
+    {
+      "text": "📊 Budget - November 2024\n\nInkomst: 15,000 kr\nFast kostnader: -8,000 kr\nMat: -2,500 kr\nNöje: -1,500 kr\nSparande: 3,000 kr",
+      "tags": [
+        "ekonomi",
+        "budget",
+        "privatekonomi",
+        "sparande"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Kan skära ner på nöje?",
+      "position": {
+        "x": 550,
+        "y": 620
+      }
+    },
+    {
+      "text": "Idrott - Löpteknik\n\nViktiga punkter:\n1. Upprätt hållning\n2. Armsvingar koordinerade\n3. Fotisättning under tyngdpunkt\n4. Steg-frekvens viktigare än längd",
+      "tags": [
+        "idrott",
+        "löpning",
+        "teknik",
+        "träning"
+      ],
+      "cardColor": "#e56eee",
+      "comments": "Applicera på träningen",
+      "position": {
+        "x": 210,
+        "y": 1260
+      }
+    },
+    {
+      "text": "🔬 Experimentidé: Växtillväxt\n\nHypotes: Rött ljus ger snabbare tillväxt än blått ljus",
+      "tags": [
+        "NO",
+        "experiment",
+        "biologi",
+        "växter"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Starta experiment nästa vecka",
+      "position": {
+        "x": 360,
+        "y": 1100
+      }
+    },
+    {
+      "text": "Musik: Grundackord - C-dur\n\nC major: C-E-G\nF major: F-A-C\nG major: G-B-D\nA minor: A-C-E",
+      "tags": [
+        "musik",
+        "gitarr",
+        "ackord",
+        "teori"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Öva 15 min dagligen",
+      "position": {
+        "x": 480,
+        "y": 880
+      }
+    },
+    {
+      "text": "☑️ Veckochecklista\n\n☐ Handla mat\n☐ Tvätt\n☐ Städa rummet\n☐ Betala räkningar\n☐ Boka tandläkare",
+      "tags": [
+        "todo",
+        "vardag",
+        "checklista",
+        "hushåll"
+      ],
+      "cardColor": "#ffd400",
+      "comments": "Gör under helgen",
+      "position": {
+        "x": 100,
+        "y": 400
+      }
+    },
+    {
+      "text": "Slöjd - Träprojekt: Bokhylla\n\nMaterial:\n- Furu 30x120 cm (3st)\n- Trädubbar\n- Trälim\n- Sandpapper (grov + fin)",
+      "tags": [
+        "slöjd",
+        "trä",
+        "projekt",
+        "hantverk"
+      ],
+      "cardColor": "#ffd400",
+      "comments": "Boka snickarverkstad",
+      "position": {
+        "x": 280,
+        "y": 1400
+      }
+    },
+    {
+      "text": "💻 Kodprojekt: Portfolio-hemsida\n\nTekniker:\n- React + TypeScript\n- Tailwind CSS\n- Framer Motion\n- Netlify deploy",
+      "tags": [
+        "programmering",
+        "projekt",
+        "webbutveckling",
+        "portfolio"
+      ],
+      "cardColor": "#2ea8e5",
+      "comments": "Deadline: 2 veckor",
+      "position": {
+        "x": 520,
+        "y": 260
+      }
+    },
+    {
+      "text": "HKK - Näringsämnen\n\nMakronutrienter:\n- Protein: Byggsten (kött, bönor)\n- Kolhydrater: Energi (pasta, bröd)\n- Fett: Energi + hormoner (nötter, olja)",
+      "tags": [
+        "HKK",
+        "näring",
+        "mat",
+        "hälsa"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "För kokningsprovet",
+      "position": {
+        "x": 400,
+        "y": 1020
+      }
+    },
+    {
+      "text": "Reflection: Vad är kunskap?\n\nPlatons definition:\nKunskap = Motiverad, sann tro (JTB)\n\nKritik: Gettier-problem",
+      "tags": [
+        "filosofi",
+        "epistemologi",
+        "kunskap",
+        "reflektion"
+      ],
+      "cardColor": "#a28ae5",
+      "comments": "Intressant för essän",
+      "position": {
+        "x": 170,
+        "y": 1540
+      }
+    },
+    {
+      "text": "🎯 Mål 2024\n\n1. Lär dig spanska (B1-nivå)\n2. Läs 12 böcker\n3. Börja gymma regelbundet\n4. Bygg 3 kodprojekt\n5. Resa utomlands",
+      "tags": [
+        "mål",
+        "2024",
+        "planering",
+        "utveckling"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Följ upp varje kvartal",
+      "position": {
+        "x": 600,
+        "y": 160
+      }
+    },
+    {
+      "text": "Research Note: Flow State\n\nDefinition (Csikszentmihalyi):\nOptimal upplevelse när utmaning matchar förmåga",
+      "tags": [
+        "psykologi",
+        "flow",
+        "produktivitet",
+        "forskning"
+      ],
+      "cardColor": "#a28ae5",
+      "comments": "Relevant för learning app-projektet",
+      "position": {
+        "x": 240,
+        "y": 1680
+      }
+    },
+    {
+      "text": "📝 Anteckningsmetoder jämförelse\n\nCornell: Struktur, effektiv repetition\nMind Map: Visuell, kreativ\nOutline: Hierarkisk, logisk\nZettelkasten: Atomär, länkad",
+      "tags": [
+        "anteckningar",
+        "metodik",
+        "lärande",
+        "PKM"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Experimentera mer med Zettelkasten",
+      "position": {
+        "x": 320,
+        "y": 1820
+      }
+    },
+    {
+      "text": "⚡ Snabb idé: Habit Tracker App\n\nFeatures:\n- Streak counter\n- Reminder notifications\n- Data visualization\n- Habit chains",
+      "tags": [
+        "app-idé",
+        "produktivitet",
+        "vanor",
+        "utveckling"
+      ],
+      "cardColor": "#f19837",
+      "comments": "Prototypa under jullovet?",
+      "position": {
+        "x": 580,
+        "y": 760
+      }
+    },
+    {
+      "text": "Matematik - Derivata\n\nDefinition: f'(x) = lim(h→0) [f(x+h) - f(x)] / h\n\nIntuition: Lutning vid en punkt",
+      "tags": [
+        "matematik",
+        "derivata",
+        "kalkyl",
+        "analys"
+      ],
+      "cardColor": "#2ea8e5",
+      "comments": "Öva fler exempel",
+      "position": {
+        "x": 130,
+        "y": 1960
+      }
+    },
+    {
+      "text": "🌍 Hållbarhet: Personligt koldioxidavtryck\n\nGenomsnitt Sverige: 10 ton CO₂/år\nGlobalt mål: 2 ton CO₂/år",
+      "tags": [
+        "miljö",
+        "hållbarhet",
+        "klimat",
+        "CO2"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Sätt personligt mål",
+      "position": {
+        "x": 460,
+        "y": 1380
+      }
+    },
+    {
+      "text": "Cognitive Bias: Confirmation Bias\n\nTendensen att söka information som bekräftar ens befintliga övertygelser",
+      "tags": [
+        "psykologi",
+        "bias",
+        "kritiskt-tänkande",
+        "kognition"
+      ],
+      "cardColor": "#a28ae5",
+      "comments": "Viktigt för källkritik",
+      "position": {
+        "x": 350,
+        "y": 2100
+      }
+    },
+    {
+      "text": "🎬 Filmlista - Måste se\n\n• Inception (2010)\n• Interstellar (2014)\n• The Matrix (1999)\n• Blade Runner 2049 (2017)\n• Her (2013)",
+      "tags": [
+        "film",
+        "nöje",
+        "sci-fi",
+        "lista"
+      ],
+      "cardColor": "#a28ae5",
+      "position": {
+        "x": 620,
+        "y": 500
+      }
+    },
+    {
+      "text": "Teamwork Best Practices\n\n1. Clear communication\n2. Define roles\n3. Regular check-ins\n4. Psychological safety\n5. Celebrate wins",
+      "tags": [
+        "arbete",
+        "teamwork",
+        "samarbete",
+        "ledarskap"
+      ],
+      "cardColor": "#2ea8e5",
+      "comments": "Applicera på grupprojektet",
+      "position": {
+        "x": 90,
+        "y": 2240
+      }
+    },
+    {
+      "text": "Pomodoro Technique\n\n25 min fokus → 5 min paus\n4 pomodoros → 15-30 min lång paus",
+      "tags": [
+        "produktivitet",
+        "teknik",
+        "fokus",
+        "tidshantering"
+      ],
+      "cardColor": "#ff6666",
+      "comments": "Prova nästa studiepass",
+      "position": {
+        "x": 500,
+        "y": 1540
+      }
+    },
+    {
+      "text": "Git Commands - Daily Use\n\ngit status\ngit add .\ngit commit -m \"message\"\ngit push origin main",
+      "tags": [
+        "programmering",
+        "git",
+        "verktyg",
+        "referens"
+      ],
+      "cardColor": "#aaaaaa",
+      "comments": "Memorera branching commands",
+      "position": {
+        "x": 200,
+        "y": 2380
+      }
+    },
+    {
+      "text": "Mindfulness: 5-4-3-2-1 Grounding\n\nÖvning vid stress/ångest:\n5 saker du ser\n4 saker du känner (touch)\n3 saker du hör\n2 saker du luktar\n1 sak du smakar",
+      "tags": [
+        "mindfulness",
+        "mental-hälsa",
+        "teknik",
+        "välmående"
+      ],
+      "cardColor": "#5fb236",
+      "comments": "Använd vid behov",
+      "position": {
+        "x": 410,
+        "y": 2520
+      }
+    },
+    {
+      "text": "SQL Basics - CRUD Operations\n\nCREATE:\nINSERT INTO users (name, email) VALUES ('Anna', 'anna@mail.com');",
+      "tags": [
+        "programmering",
+        "SQL",
+        "databas",
+        "referens"
+      ],
+      "cardColor": "#2ea8e5",
+      "comments": "Öva JOINs mer",
+      "position": {
+        "x": 560,
+        "y": 1700
+      }
+    },
+    {
+      "text": "Stoicism: Dichotomy of Control\n\nControl: Dina tankar, värderingar, handlingar\nNo Control: Andras åsikter, väder, framtid",
+      "tags": [
+        "filosofi",
+        "stoicism",
+        "mental-modell",
+        "visdom"
+      ],
+      "cardColor": "#a28ae5",
+      "comments": "Kraftfullt perspektiv",
+      "position": {
+        "x": 270,
+        "y": 2660
+      }
+    },
+    {
+      "text": "🍳 Recept: Pasta Carbonara (4 port)\n\n400g spaghetti\n200g pancetta\n4 ägg\n100g parmesan\nSvartpeppar",
+      "tags": [
+        "mat",
+        "recept",
+        "pasta",
+        "italienskt"
+      ],
+      "cardColor": "#ffd400",
+      "comments": "Favorit, gör ofta!",
+      "position": {
+        "x": 120,
+        "y": 2800
+      }
+    }
+  ]
+}
