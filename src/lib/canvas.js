@@ -4178,7 +4178,13 @@ async function pasteImageFromClipboard() {
  */
 async function showAIChooser() {
   return new Promise((resolve) => {
+    // IMPORTANT: Remove any leftover overlays from previous calls
+    // This prevents gray overlay from persisting if cleanup didn't run properly
+    const oldOverlays = document.querySelectorAll('div[style*="z-index: 10000"][style*="rgba(0, 0, 0, 0.8)"]');
+    oldOverlays.forEach(old => old.remove());
+
     const overlay = document.createElement('div');
+    overlay.className = 'ai-chooser-overlay'; // Add class for easier cleanup
     overlay.style.cssText = `
       position: fixed;
       top: 0;
@@ -4301,6 +4307,10 @@ async function showAIChooser() {
  * Show Gemini Assistant dialog
  */
 async function showGeminiAssistant() {
+  // IMPORTANT: Ensure any chooser overlays are removed when opening the panel
+  const oldChooserOverlays = document.querySelectorAll('.ai-chooser-overlay');
+  oldChooserOverlays.forEach(overlay => overlay.remove());
+
   // Create side panel (no overlay, user can see canvas)
   const panel = document.createElement('div');
   panel.id = 'geminiPanel';
@@ -4346,8 +4356,12 @@ async function showGeminiAssistant() {
       <h3 style="margin: 0; font-size: 18px; font-weight: 600;">
         🤖 Gemini Chat
       </h3>
-      <button id="geminiClose" style="background: none; border: none; font-size: 24px; cursor: pointer;
-              color: var(--text-secondary); padding: 0; line-height: 1;">&times;</button>
+      <div style="display: flex; gap: 12px;">
+        <button id="geminiMinimize" title="Minimera (sparar konversationen)" style="background: none; border: none; font-size: 20px; cursor: pointer;
+                color: var(--text-secondary); padding: 0; line-height: 1;">−</button>
+        <button id="geminiClose" title="Stäng (raderar konversationen)" style="background: none; border: none; font-size: 24px; cursor: pointer;
+                color: var(--text-secondary); padding: 0; line-height: 1;">&times;</button>
+      </div>
     </div>
     <div id="chatMessages" style="
       flex: 1;
@@ -4392,12 +4406,58 @@ async function showGeminiAssistant() {
   const chatMessages = document.getElementById('chatMessages');
   const askBtn = document.getElementById('geminiAsk');
   const closeBtn = document.getElementById('geminiClose');
+  const minimizeBtn = document.getElementById('geminiMinimize');
   const voiceBtn = document.getElementById('geminiVoice');
   const voiceIndicator = document.getElementById('voiceIndicator');
   const voiceTranscript = document.getElementById('voiceTranscript');
 
   // Conversation history
   const conversationHistory = [];
+
+  // Create minimize floating button (initially hidden)
+  const floatingBtn = document.createElement('button');
+  floatingBtn.id = 'geminiFloatingBtn';
+  floatingBtn.innerHTML = '🤖';
+  floatingBtn.title = 'Expandera Gemini Chat';
+  floatingBtn.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+  `;
+  floatingBtn.addEventListener('mouseenter', () => {
+    floatingBtn.style.transform = 'scale(1.1)';
+  });
+  floatingBtn.addEventListener('mouseleave', () => {
+    floatingBtn.style.transform = 'scale(1)';
+  });
+  document.body.appendChild(floatingBtn);
+
+  // Minimize function
+  const minimize = () => {
+    panel.style.display = 'none';
+    floatingBtn.style.display = 'flex';
+  };
+
+  // Expand function
+  const expand = () => {
+    panel.style.display = 'flex';
+    floatingBtn.style.display = 'none';
+    queryInput.focus();
+  };
 
   // Focus input
   queryInput.focus();
@@ -4636,12 +4696,19 @@ async function showGeminiAssistant() {
       recognition.stop();
     }
 
-    // Remove panel
+    // Remove panel and floating button
     panel.remove();
+    floatingBtn.remove();
   };
 
   // Close button handler
   closeBtn.addEventListener('click', cleanup);
+
+  // Minimize button handler
+  minimizeBtn.addEventListener('click', minimize);
+
+  // Floating button handler (expand)
+  floatingBtn.addEventListener('click', expand);
 
   // Add Escape key listener
   document.addEventListener('keydown', handleEscape);
@@ -5848,6 +5915,10 @@ async function showGeminiAssistant() {
  * Show ChatGPT Assistant dialog
  */
 async function showChatGPTAssistant() {
+  // IMPORTANT: Ensure any chooser overlays are removed when opening the panel
+  const oldChooserOverlays = document.querySelectorAll('.ai-chooser-overlay');
+  oldChooserOverlays.forEach(overlay => overlay.remove());
+
   // Create side panel (no overlay, user can see canvas) - same as Gemini
   const panel = document.createElement('div');
   panel.id = 'chatgptPanel';
@@ -5893,8 +5964,12 @@ async function showChatGPTAssistant() {
       <h3 style="margin: 0; font-size: 18px; font-weight: 600;">
         💬 ChatGPT Chat
       </h3>
-      <button id="chatgptClose" style="background: none; border: none; font-size: 24px; cursor: pointer;
-              color: var(--text-secondary); padding: 0; line-height: 1;">&times;</button>
+      <div style="display: flex; gap: 12px;">
+        <button id="chatgptMinimize" title="Minimera (sparar konversationen)" style="background: none; border: none; font-size: 20px; cursor: pointer;
+                color: var(--text-secondary); padding: 0; line-height: 1;">−</button>
+        <button id="chatgptClose" title="Stäng (raderar konversationen)" style="background: none; border: none; font-size: 24px; cursor: pointer;
+                color: var(--text-secondary); padding: 0; line-height: 1;">&times;</button>
+      </div>
     </div>
     <div id="chatgptMessages" style="
       flex: 1;
@@ -5939,12 +6014,58 @@ async function showChatGPTAssistant() {
   const chatMessages = document.getElementById('chatgptMessages');
   const askBtn = document.getElementById('chatgptAsk');
   const closeBtn = document.getElementById('chatgptClose');
+  const minimizeBtn = document.getElementById('chatgptMinimize');
   const voiceBtn = document.getElementById('chatgptVoice');
   const voiceIndicator = document.getElementById('chatgptVoiceIndicator');
   const voiceTranscript = document.getElementById('chatgptVoiceTranscript');
 
   // Conversation history
   const conversationHistory = [];
+
+  // Create minimize floating button (initially hidden)
+  const floatingBtn = document.createElement('button');
+  floatingBtn.id = 'chatgptFloatingBtn';
+  floatingBtn.innerHTML = '💬';
+  floatingBtn.title = 'Expandera ChatGPT Chat';
+  floatingBtn.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+  `;
+  floatingBtn.addEventListener('mouseenter', () => {
+    floatingBtn.style.transform = 'scale(1.1)';
+  });
+  floatingBtn.addEventListener('mouseleave', () => {
+    floatingBtn.style.transform = 'scale(1)';
+  });
+  document.body.appendChild(floatingBtn);
+
+  // Minimize function
+  const minimize = () => {
+    panel.style.display = 'none';
+    floatingBtn.style.display = 'flex';
+  };
+
+  // Expand function
+  const expand = () => {
+    panel.style.display = 'flex';
+    floatingBtn.style.display = 'none';
+    queryInput.focus();
+  };
 
   // Focus input
   queryInput.focus();
@@ -6150,11 +6271,18 @@ async function showChatGPTAssistant() {
       recognition.stop();
     }
 
-    // Remove panel
+    // Remove panel and floating button
     panel.remove();
+    floatingBtn.remove();
   };
 
   closeBtn.addEventListener('click', cleanup);
+
+  // Minimize button handler
+  minimizeBtn.addEventListener('click', minimize);
+
+  // Floating button handler (expand)
+  floatingBtn.addEventListener('click', expand);
 
   document.addEventListener('keydown', handleEscape);
 

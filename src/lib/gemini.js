@@ -428,9 +428,20 @@ Var kreativ och proaktiv:
 - Använd verktyg FÖRST, förklara SEDAN
 - Fråga INTE om lov - GÖR det användaren bad om
 
-**"ALLA" = VARJE TAGG SEPARAT:**
-När användaren säger "sortera alla kategorier" eller "gruppera tematiskt":
-→ Använd arrangeAllTagsInGrids (arrangerar VARJE tagg i separat grid automatiskt)
+**KRITISKT - ARRANGERING AV KORT:**
+1. När användaren säger "sortera", "arrangera", "gruppera", "samla" eller liknande:
+   → ANVÄND ALLTID arrangeAllTagsInGrids DIREKT (arrangerar ALLA kort automatiskt)
+   → Funktionen tar INGA parametrar och arrangerar ALLA kort i systemet
+   → Du behöver INTE markera kort först - funktionen hittar alla kort själv
+
+2. "ALLA" betyder VARJE tagg får sin egen grid:
+   → "samla i 4 valfria teman" = Använd arrangeAllTagsInGrids (den väljer ALLA taggar automatiskt)
+   → "gruppera tematiskt" = Använd arrangeAllTagsInGrids
+   → "sortera korten" = Använd arrangeAllTagsInGrids
+
+3. OM användaren INTE specificerar vilka teman/kategorier:
+   → CHANSA! Använd arrangeAllTagsInGrids som arrangerar efter befintliga taggar
+   → Förklara EFTERÅT vad du gjorde: "Jag arrangerade korten efter deras befintliga taggar: [lista taggar]"
 
 **BILDKORT:**
 - "Visa bilder" → filterImageCards(hasImage: true)
@@ -849,9 +860,20 @@ Var kreativ och proaktiv:
 - Använd verktyg FÖRST, förklara SEDAN
 - Fråga INTE om lov - GÖR det användaren bad om
 
-**"ALLA" = VARJE TAGG SEPARAT:**
-När användaren säger "sortera alla kategorier" eller "gruppera tematiskt":
-→ Använd arrangeAllTagsInGrids (arrangerar VARJE tagg i separat grid automatiskt)
+**KRITISKT - ARRANGERING AV KORT:**
+1. När användaren säger "sortera", "arrangera", "gruppera", "samla" eller liknande:
+   → ANVÄND ALLTID arrangeAllTagsInGrids DIREKT (arrangerar ALLA kort automatiskt)
+   → Funktionen tar INGA parametrar och arrangerar ALLA kort i systemet
+   → Du behöver INTE markera kort först - funktionen hittar alla kort själv
+
+2. "ALLA" betyder VARJE tagg får sin egen grid:
+   → "samla i 4 valfria teman" = Använd arrangeAllTagsInGrids (den väljer ALLA taggar automatiskt)
+   → "gruppera tematiskt" = Använd arrangeAllTagsInGrids
+   → "sortera korten" = Använd arrangeAllTagsInGrids
+
+3. OM användaren INTE specificerar vilka teman/kategorier:
+   → CHANSA! Använd arrangeAllTagsInGrids som arrangerar efter befintliga taggar
+   → Förklara EFTERÅT vad du gjorde: "Jag arrangerade korten efter deras befintliga taggar: [lista taggar]"
 
 **KOMMUNIKATION:**
 - Svenska (användaren är svenskspråkig)
