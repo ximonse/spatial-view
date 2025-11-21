@@ -39,6 +39,7 @@ import {
   arrangeGridHorizontal,
   arrangeGridTopAligned
 } from './arrangement.js';
+import { registerCommand, unregisterCommand, executeCommandFromEvent, getCommands, formatKeyBindings } from '../lib/command-registry.js';
 
 // ============================================================================
 // SECTION 1: GLOBAL STATE & CONFIGURATION
@@ -65,6 +66,7 @@ let pendingCreateMerge = new Map(); // cardId -> create action
 
 // Clipboard for copy/paste
 let clipboard = [];
+const registeredCanvasCommands = new Set();
 
 // ============================================================================
 // SECTION 2: RENDERING (Cards, Colors, Visual Elements)
@@ -192,6 +194,9 @@ export async function initCanvas() {
   createFitAllButton();
   createCommandPaletteButton();
   createAddButton();
+
+  registerCanvasCommands();
+  setupKeyboardShortcuts();
 
   console.log('Konva canvas initialized');
 }
@@ -2520,310 +2525,239 @@ function setupCanvasEvents() {
     // Note: Don't reset stageTouchHasMoved here - it's needed for dbltap check
   });
 
-  // Track if 'g' key is currently held down for simultaneous combos
-  let gKeyHeld = false;
+}
 
-  // Global keyboard shortcuts
-  window.addEventListener('keydown', async (e) => {
-    // Ignore if typing in input/textarea (check both target and active element)
-    if (e.target.tagName === 'INPUT' ||
-        e.target.tagName === 'TEXTAREA' ||
-        document.activeElement.tagName === 'INPUT' ||
-        document.activeElement.tagName === 'TEXTAREA' ||
-        document.activeElement.isContentEditable) {
-      return;
-    }
+function getPointerPositionOnStage() {
+  const pointer = stage.getPointerPosition() || { x: stage.width() / 2, y: stage.height() / 2 };
+  const scale = stage.scaleX();
+  return {
+    x: (pointer.x - stage.x()) / scale,
+    y: (pointer.y - stage.y()) / scale
+  };
+}
 
-    // Ctrl+Z - Undo
-    if (e.ctrlKey && e.key === 'z') {
-      e.preventDefault();
-      await undo();
-      return;
-    }
+async function handleCreateNewCardAtPointer() {
+  const position = getPointerPositionOnStage();
+  await createNewCard(position);
+}
 
-    // Ctrl+Y - Redo
-    if (e.ctrlKey && e.key === 'y') {
-      e.preventDefault();
-      await redo();
-      return;
-    }
+async function handleReadWithAICommand() {
+  const selectedNodes = layer.find('.selected');
+  if (selectedNodes.length === 0) {
+    alert('Markera först ett eller flera bildkort som du vill läsa med AI.');
+    return;
+  }
 
-    // Ctrl+C - Copy selected cards
-    if (e.ctrlKey && e.key === 'c') {
-      e.preventDefault();
-      await copySelectedCards();
-      return;
-    }
+  const allCards = await getAllCards();
+  const imageCardIds = [];
 
-    // Ctrl+Shift+V - Paste image from clipboard
-    if (e.ctrlKey && e.shiftKey && e.key === 'V') {
-      e.preventDefault();
-      await pasteImageFromClipboard();
-      return;
-    }
-
-    // Ctrl+V - Paste copied cards
-    if (e.ctrlKey && e.key === 'v') {
-      e.preventDefault();
-      await pasteCards();
-      return;
-    }
-
-    // Ctrl+A - Select all cards
-    if (e.ctrlKey && e.key === 'a') {
-      e.preventDefault();
-      const isEink = document.body.classList.contains('eink-theme');
-      const allCards = layer.getChildren(node => node.getAttr('cardId'));
-      allCards.forEach(group => {
-        const background = group.findOne('Rect');
-        group.addName('selected');
-        if (background) {
-          if (isEink) {
-            background.stroke('#000000');
-            background.strokeWidth(3);
-          } else {
-            background.stroke('#2196F3');
-            background.strokeWidth(3);
-          }
-        }
-      });
-      layer.batchDraw();
-      return;
-    }
-
-    // S - Save (export)
-    if (e.key === 's' && !e.ctrlKey) {
-      e.preventDefault();
-      await exportCanvas();
-      console.log('Canvas exported');
-      return;
-    }
-
-    // L - Load (import JSON)
-    if (e.key === 'l' && !e.ctrlKey) {
-      e.preventDefault();
-      await importCanvas();
-      console.log('Canvas import initiated');
-      return;
-    }
-
-    // B - Backup (download zip with all cards and images)
-    if (e.key === 'b' && !e.ctrlKey) {
-      e.preventDefault();
-      const downloadBtn = document.getElementById('btn-download');
-      if (downloadBtn) {
-        downloadBtn.click();
-        console.log('Backup download initiated');
+  for (const node of selectedNodes) {
+    const cardId = node.getAttr('cardId');
+    if (cardId) {
+      const card = allCards.find(c => c.id === cardId);
+      if (card && card.image) {
+        imageCardIds.push(cardId);
       }
-      return;
     }
+  }
 
-    // R - Restore from backup zip
-    if (e.key === 'r' && !e.ctrlKey) {
-      e.preventDefault();
-      if (window.handleRestoreBackup) {
-        window.handleRestoreBackup();
-        console.log('Restore backup initiated');
-      }
-      return;
+  if (imageCardIds.length === 0) {
+    alert('Inga bildkort är markerade. Endast bildkort kan läsas med AI.');
+    return;
+  }
+
+  for (const cardId of imageCardIds) {
+    try {
+      await readImageWithGemini(cardId);
+    } catch (error) {
+      console.error('Fel vid OCR:', error);
+      alert(`Fel vid läsning av kort: ${error.message}`);
     }
+  }
 
-    // Y - Sync with Google Drive
-    if (e.key === 'y' && !e.ctrlKey) {
-      e.preventDefault();
-      if (window.handleDriveSync) {
-        window.handleDriveSync();
-        console.log('Drive sync initiated');
-      }
-      return;
+  await reloadCanvas();
+  alert(`✅ ${imageCardIds.length} kort lästa med Gemini AI. Texten finns på baksidan - dubbelklicka och klicka "Vänd kort" för att se.`);
+}
+
+async function handleAIChooserCommand() {
+  const choice = await showAIChooser();
+  if (choice === 'gemini') {
+    await showGeminiAssistant();
+  } else if (choice === 'chatgpt') {
+    await showChatGPTAssistant();
+  }
+}
+
+async function handleBackupDownload() {
+  const downloadBtn = document.getElementById('btn-download');
+  downloadBtn?.click();
+}
+
+async function handleRestoreBackupCommand() {
+  if (window.handleRestoreBackup) {
+    await window.handleRestoreBackup();
+  }
+}
+
+async function handleDriveSyncCommand() {
+  if (window.handleDriveSync) {
+    await window.handleDriveSync();
+  }
+}
+
+function handleDriveReset() {
+  const confirmed = confirm('Vill du rensa alla Google Drive-inställningar?\n\n' +
+    'Detta tar bort:\n' +
+    '- OAuth Client ID\n' +
+    '- Senaste synk-tid\n' +
+    '- Backup-ID\n\n' +
+    'Du måste logga in igen nästa gång du synkar.');
+
+  if (confirmed) {
+    localStorage.removeItem('googleDriveClientId');
+    localStorage.removeItem('lastDriveBackupId');
+    localStorage.removeItem('lastDriveBackupTime');
+    alert('✅ Drive-inställningar rensade!\n\nTryck Y för att logga in igen.');
+  }
+}
+
+async function handleDeleteSelectedCards() {
+  const selectedNodes = layer.find('.selected');
+  for (const node of selectedNodes) {
+    if (node.getAttr('cardId')) {
+      const cardId = node.getAttr('cardId');
+      await handleDeleteCard(cardId);
     }
+  }
+}
 
-    // K - Toggle view
-    if (e.key === 'k') {
-      e.preventDefault();
-      toggleViewFromMenu();
-      return;
-    }
-
-    // N - New text card
-    if (e.key === 'n') {
-      e.preventDefault();
-      const pointer = stage.getPointerPosition() || { x: stage.width() / 2, y: stage.height() / 2 };
-      const scale = stage.scaleX();
-      const position = {
-        x: (pointer.x - stage.x()) / scale,
-        y: (pointer.y - stage.y()) / scale
-      };
-      await createNewCard(position);
-      return;
-    }
-
-    // I - Import image
-    if (e.key === 'i') {
-      e.preventDefault();
-      await importImage();
-      return;
-    }
-
-    // F - Focus search
-    if (e.key === 'f') {
-      e.preventDefault();
-      const searchInput = document.getElementById('search-input');
-      if (searchInput) {
-        searchInput.focus();
-        searchInput.select();
-      }
-      return;
-    }
-
-    // Space - Command palette
-    if (e.key === ' ') {
-      e.preventDefault();
-      showCommandPalette();
-      return;
-    }
-
-    // M - Multi-import
-    if (e.key === 'm' && !e.ctrlKey) {
-      e.preventDefault();
-      await createMultipleCardsFromText();
-      return;
-    }
-
-    // E - Export to readable text
-    if (e.key === 'e' && !e.ctrlKey) {
-      e.preventDefault();
-      await exportToReadableText();
-      return;
-    }
-
-    // V - Vertical arrangement (or G+V if 'g' is held)
-    if (e.key === 'v' && !e.ctrlKey) {
-      e.preventDefault();
-      if (gKeyHeld) {
-        // G+V = Grid Vertical
-        console.log('G+V pressed (simultaneous)');
-        if (clipboard.length > 0) {
-          await pasteCardsWithArrangement(arrangeGridVertical, 'Grid Vertical');
-        } else {
-          await applyArrangement(arrangeGridVertical, 'Grid Vertical');
-        }
+function handleSelectAllCards() {
+  const isEink = document.body.classList.contains('eink-theme');
+  const allCards = layer.getChildren(node => node.getAttr('cardId'));
+  allCards.forEach(group => {
+    const background = group.findOne('Rect');
+    group.addName('selected');
+    if (background) {
+      if (isEink) {
+        background.stroke('#000000');
+        background.strokeWidth(3);
       } else {
-        // V alone = Vertical
-        console.log('V pressed');
-        await applyArrangement(arrangeVertical, 'Vertical');
+        background.stroke('#2196F3');
+        background.strokeWidth(3);
       }
-      return;
-    }
-
-    // H - Horizontal arrangement (or G+H if 'g' is held)
-    if (e.key === 'h' && !e.ctrlKey) {
-      e.preventDefault();
-      if (gKeyHeld) {
-        // G+H = Grid Horizontal
-        console.log('G+H pressed (simultaneous)');
-        await applyArrangement(arrangeGridHorizontal, 'Grid Horizontal');
-      } else {
-        // H alone = Horizontal
-        console.log('H pressed');
-        await applyArrangement(arrangeHorizontal, 'Horizontal');
-      }
-      return;
-    }
-
-    // T - Grid Top-Aligned (only when G is held)
-    if (e.key === 't' && !e.ctrlKey && gKeyHeld) {
-      e.preventDefault();
-      console.log('G+T pressed (simultaneous)');
-      await applyArrangement(arrangeGridTopAligned, 'Grid Top-Aligned');
-      return;
-    }
-
-    // G - Set flag for combos (G+V, G+H, G+T)
-    if (e.key === 'g' && !e.ctrlKey) {
-      e.preventDefault();
-      gKeyHeld = true;
-      console.log('G pressed (waiting for combo)');
-      return;
-    }
-
-    // Q - Paste and arrange in cluster (if clipboard has cards), otherwise arrange selected
-    if (e.key === 'q' && !e.ctrlKey) {
-      e.preventDefault();
-      if (clipboard.length > 0) {
-        await pasteCardsWithArrangement(arrangeCluster, 'Cluster');
-      } else {
-        await applyArrangement(arrangeCluster, 'Cluster');
-      }
-      return;
-    }
-
-    // A - AI Assistant chooser (Gemini or ChatGPT)
-    if (e.key === 'a' && !e.ctrlKey) {
-      e.preventDefault();
-      const choice = await showAIChooser();
-      if (choice === 'gemini') {
-        await showGeminiAssistant();
-      } else if (choice === 'chatgpt') {
-        await showChatGPTAssistant();
-      }
-      return;
-    }
-
-    // P - Toggle pin/unpin selected cards
-    if (e.key === 'p' && !e.ctrlKey) {
-      e.preventDefault();
-      await togglePinSelectedCards();
-      return;
-    }
-
-    // Delete/Backspace - Delete selected cards
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-      e.preventDefault();
-      const selectedNodes = layer.find('.selected');
-      for (const node of selectedNodes) {
-        if (node.getAttr('cardId')) {
-          const cardId = node.getAttr('cardId');
-          await handleDeleteCard(cardId);
-        }
-      }
-      return;
-    }
-
-    // Escape - Deselect all cards
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      const isEink = document.body.classList.contains('eink-theme');
-      const isDark = document.body.classList.contains('dark-theme');
-      const selectedNodes = layer.find('.selected');
-      selectedNodes.forEach(group => {
-        const background = group.findOne('Rect');
-        group.removeName('selected');
-        if (background) {
-          if (isEink) {
-            background.stroke('#000000');
-            background.strokeWidth(1);
-          } else if (isDark) {
-            background.stroke('#4a5568');
-            background.strokeWidth(1);
-          } else {
-            background.stroke('#e0e0e0');
-            background.strokeWidth(1);
-          }
-        }
-      });
-      layer.batchDraw();
-      return;
     }
   });
+  layer.batchDraw();
+}
 
-  // Reset gKeyHeld flag when 'g' is released
-  window.addEventListener('keyup', (e) => {
-    if (e.key === 'g') {
-      gKeyHeld = false;
-      console.log('G released');
+async function handleVerticalArrangement(options = {}) {
+  const useGrid = options.forceGrid || options.data?.heldChords?.has('g');
+  if (useGrid) {
+    if (clipboard.length > 0) {
+      await pasteCardsWithArrangement(arrangeGridVertical, 'Grid Vertical');
+    } else {
+      await applyArrangement(arrangeGridVertical, 'Grid Vertical');
     }
+    return;
+  }
+
+  await applyArrangement(arrangeVertical, 'Vertical');
+}
+
+async function handleHorizontalArrangement(options = {}) {
+  const useGrid = options.forceGrid || options.data?.heldChords?.has('g');
+  if (useGrid) {
+    await applyArrangement(arrangeGridHorizontal, 'Grid Horizontal');
+    return;
+  }
+
+  await applyArrangement(arrangeHorizontal, 'Horizontal');
+}
+
+async function handleGridTopArrangement() {
+  await applyArrangement(arrangeGridTopAligned, 'Grid Top-Aligned');
+}
+
+async function handleClusterArrangement() {
+  if (clipboard.length > 0) {
+    await pasteCardsWithArrangement(arrangeCluster, 'Cluster');
+  } else {
+    await applyArrangement(arrangeCluster, 'Cluster');
+  }
+}
+
+function registerCanvasCommands() {
+  registeredCanvasCommands.forEach(unregisterCommand);
+  registeredCanvasCommands.clear();
+
+  const register = (command) => {
+    registerCommand(command);
+    registeredCanvasCommands.add(command.id);
+  };
+
+  register({ id: 'open-command-palette', handler: () => showCommandPalette(), contexts: ['board', 'column', 'global'], showInPalette: false });
+  register({ id: 'toggle-view', handler: () => toggleViewFromMenu(), contexts: ['global'] });
+  register({ id: 'toggle-theme', handler: () => window.dispatchEvent(new CustomEvent('toggleTheme')), contexts: ['global'] });
+  register({ id: 'fit-all-cards', handler: () => fitAllCards(), contexts: ['board'] });
+  register({ id: 'new-text-card', handler: () => handleCreateNewCardAtPointer(), contexts: ['board'] });
+  register({ id: 'import-image', handler: () => importImage(), contexts: ['board'] });
+  register({ id: 'paste-image-clipboard', handler: () => pasteImageFromClipboard(), contexts: ['board'] });
+  register({ id: 'read-with-ai', handler: () => handleReadWithAICommand(), contexts: ['board'] });
+  register({ id: 'ask-ai', handler: () => handleAIChooserCommand(), contexts: ['board'] });
+  register({ id: 'export-canvas', handler: () => exportCanvas(), contexts: ['board'] });
+  register({ id: 'export-readable', handler: () => exportToReadableText(), contexts: ['board'] });
+  register({ id: 'import-canvas', handler: () => importCanvas(), contexts: ['board'] });
+  register({ id: 'download-backup', handler: () => handleBackupDownload(), contexts: ['board', 'global'] });
+  register({ id: 'restore-backup', handler: () => handleRestoreBackupCommand(), contexts: ['board'] });
+  register({ id: 'drive-sync', handler: () => handleDriveSyncCommand(), contexts: ['global'] });
+  register({ id: 'drive-reset', handler: () => handleDriveReset(), contexts: ['global'] });
+  register({ id: 'import-zotero-html', handler: () => importFromZoteroHTML(), contexts: ['board'] });
+  register({ id: 'create-multiple-cards', handler: () => createMultipleCardsFromText(), contexts: ['board'] });
+  register({ id: 'delete-selected', handler: () => handleDeleteSelectedCards(), contexts: ['board'] });
+  register({ id: 'undo', handler: () => undo(), contexts: ['board'] });
+  register({ id: 'redo', handler: () => redo(), contexts: ['board'] });
+  register({ id: 'copy-selected', handler: () => copySelectedCards(), contexts: ['board'] });
+  register({ id: 'paste-cards', handler: () => pasteCards(), contexts: ['board'] });
+  register({ id: 'toggle-pin', handler: () => togglePinSelectedCards(), contexts: ['board'] });
+  register({ id: 'select-all', handler: () => handleSelectAllCards(), contexts: ['board'] });
+  register({
+    id: 'arrange-vertical',
+    handler: ({ data }) => handleVerticalArrangement({ data }),
+    contexts: ['board'],
+    when: ({ data }) => !data?.heldChords?.has('g'),
   });
+  register({
+    id: 'arrange-horizontal',
+    handler: ({ data }) => handleHorizontalArrangement({ data }),
+    contexts: ['board'],
+    when: ({ data }) => !data?.heldChords?.has('g'),
+  });
+  register({ id: 'arrange-cluster', handler: () => handleClusterArrangement(), contexts: ['board'] });
+  register({ id: 'arrange-grid-vertical', handler: ({ data }) => handleVerticalArrangement({ data, forceGrid: true }), contexts: ['board'] });
+  register({ id: 'arrange-grid-horizontal', handler: ({ data }) => handleHorizontalArrangement({ data, forceGrid: true }), contexts: ['board'] });
+  register({ id: 'arrange-grid-top', handler: () => handleGridTopArrangement(), contexts: ['board'] });
+}
+
+function setupKeyboardShortcuts() {
+  const heldChords = new Set();
+
+  const handleKeyDown = (e) => {
+    if (e.key?.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      heldChords.add('g');
+      return;
+    }
+
+    executeCommandFromEvent(e, { data: { heldChords } });
+  };
+
+  const handleKeyUp = (e) => {
+    if (e.key?.toLowerCase() === 'g') {
+      heldChords.delete('g');
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
 }
 
 // ============================================================================
@@ -7115,214 +7049,13 @@ async function showChatGPTAssistant() {
 /**
  * Show command palette
  */
+
 function showCommandPalette() {
-  const commands = [
-    { key: 'N', icon: '📝', name: 'Nytt text-kort', desc: 'Skapa nytt text-kort vid muspekare', action: async () => {
-      const pointer = stage.getPointerPosition() || { x: stage.width() / 2, y: stage.height() / 2 };
-      const scale = stage.scaleX();
-      const position = {
-        x: (pointer.x - stage.x()) / scale,
-        y: (pointer.y - stage.y()) / scale
-      };
-      await createNewCard(position);
-    }},
-    { key: 'I', icon: '🖼️', name: 'Importera bild', desc: 'Öppna filväljare för att importera bilder', action: async () => {
-      await importImage();
-    }},
-    { key: 'Ctrl+Shift+V', icon: '📋🖼️', name: 'Klistra in bild', desc: 'Klistra in bild från clipboard (t.ex. skärmdump)', action: async () => {
-      await pasteImageFromClipboard();
-    }},
-    { key: 'R', icon: '✨', name: 'Läs med AI', desc: 'Använd Gemini AI för att läsa text från markerade bildkort', action: async () => {
-      const selectedNodes = layer.find('.selected');
-      if (selectedNodes.length === 0) {
-        alert('Markera först ett eller flera bildkort som du vill läsa med AI.');
-        return;
-      }
+  const commands = getCommands().filter(cmd => typeof cmd.handler === 'function');
+  if (commands.length === 0) return;
 
-      // Get all cards and filter only image cards
-      const allCards = await getAllCards();
-      const imageCardIds = [];
-
-      for (const node of selectedNodes) {
-        const cardId = node.getAttr('cardId');
-        if (cardId) {
-          const card = allCards.find(c => c.id === cardId);
-          if (card && card.image) {
-            imageCardIds.push(cardId);
-          }
-        }
-      }
-
-      if (imageCardIds.length === 0) {
-        alert('Inga bildkort är markerade. Endast bildkort kan läsas med AI.');
-        return;
-      }
-
-      // Process each card
-      for (const cardId of imageCardIds) {
-        try {
-          await readImageWithGemini(cardId);
-        } catch (error) {
-          console.error('Fel vid OCR:', error);
-          alert(`Fel vid läsning av kort: ${error.message}`);
-        }
-      }
-
-      // Reload canvas to show updated cards
-      await reloadCanvas();
-      alert(`✅ ${imageCardIds.length} kort lästa med Gemini AI. Texten finns på baksidan - dubbelklicka och klicka "Vänd kort" för att se.`);
-    }},
-    { key: 'A', icon: '🤖💬', name: 'Fråga AI', desc: 'Välj Gemini (G) eller ChatGPT (C) för att organisera kort', action: async () => {
-      const choice = await showAIChooser();
-      if (choice === 'gemini') {
-        await showGeminiAssistant();
-      } else if (choice === 'chatgpt') {
-        await showChatGPTAssistant();
-      }
-    }},
-    { key: 'F', icon: '🔍', name: 'Sök kort', desc: 'Fokusera sökfältet', action: () => {
-      const searchInput = document.getElementById('search-input');
-      if (searchInput) {
-        searchInput.focus();
-        searchInput.select();
-      }
-    }},
-    { key: 'S', icon: '💾', name: 'Exportera', desc: 'Exportera canvas till JSON-fil', action: async () => {
-      await exportCanvas();
-    }},
-    { key: 'E', icon: '📄', name: 'Exportera till text', desc: 'Exportera till läsbar text (HTML, Markdown, TXT)', action: async () => {
-      await exportToReadableText();
-    }},
-    { key: 'L', icon: '📂', name: 'Ladda från fil', desc: 'Importera kort från JSON eller återställ från ZIP-backup', action: async () => {
-      await importCanvas();
-    }},
-    { key: 'B', icon: '💾', name: 'Ladda ner backup', desc: 'Ladda ner alla kort och bilder som zip-fil', action: async () => {
-      // Trigger download from main.js
-      const downloadBtn = document.getElementById('btn-download');
-      if (downloadBtn) {
-        downloadBtn.click();
-      }
-    }},
-    { key: '', icon: '📥', name: 'Återställ från backup', desc: 'Återställ kort och bilder från zip-backup', action: async () => {
-      if (window.handleRestoreBackup) {
-        window.handleRestoreBackup();
-      }
-    }},
-    { key: 'Y', icon: '☁️', name: 'Synka med Google Drive', desc: 'Ladda upp backup till Google Drive', action: async () => {
-      if (window.handleDriveSync) {
-        await window.handleDriveSync();
-      }
-    }},
-    { key: '', icon: '🔄', name: 'Återställ Drive-inställningar', desc: 'Rensa Google Drive OAuth och Client ID (fixa auth-problem)', action: async () => {
-      const confirmed = confirm('Vill du rensa alla Google Drive-inställningar?\n\n' +
-        'Detta tar bort:\n' +
-        '- OAuth Client ID\n' +
-        '- Senaste synk-tid\n' +
-        '- Backup-ID\n\n' +
-        'Du måste logga in igen nästa gång du synkar.');
-
-      if (confirmed) {
-        localStorage.removeItem('googleDriveClientId');
-        localStorage.removeItem('lastDriveBackupId');
-        localStorage.removeItem('lastDriveBackupTime');
-        alert('✅ Drive-inställningar rensade!\n\nTryck Y för att logga in igen.');
-      }
-    }},
-    { key: 'Z', icon: '📚', name: 'Importera Zotero HTML', desc: 'Importera anteckningar från Zotero HTML-export', action: async () => {
-      await importFromZoteroHTML();
-    }},
-    { key: 'M', icon: '📝📝', name: 'Skapa flera kort från text', desc: 'Klistra in text och skapa kort manuellt eller med Gemini AI', action: async () => {
-      await createMultipleCardsFromText();
-    }},
-    { key: 'Delete', icon: '🗑️', name: 'Ta bort kort', desc: 'Ta bort markerade kort', action: async () => {
-      const selectedNodes = layer.find('.selected');
-      for (const node of selectedNodes) {
-        if (node.getAttr('cardId')) {
-          const cardId = node.getAttr('cardId');
-          await handleDeleteCard(cardId);
-        }
-      }
-    }},
-    { key: 'Ctrl+Z', icon: '↶', name: 'Ångra', desc: 'Ångra senaste ändring', action: async () => {
-      await undo();
-    }},
-    { key: 'Ctrl+Y', icon: '↷', name: 'Gör om', desc: 'Gör om ångrad ändring', action: async () => {
-      await redo();
-    }},
-    { key: 'Ctrl+C', icon: '📋', name: 'Kopiera kort', desc: 'Kopiera markerade kort till clipboard', action: async () => {
-      await copySelectedCards();
-    }},
-    { key: 'Ctrl+V', icon: '📄', name: 'Klistra in kort', desc: 'Klistra in kopierade kort', action: async () => {
-      await pasteCards();
-    }},
-    { key: 'P', icon: '📌', name: 'Pinna/Avpinna kort', desc: 'Pinna eller avpinna markerade kort (kan inte flyttas)', action: async () => {
-      await togglePinSelectedCards();
-    }},
-    { key: 'V', icon: '↕️', name: 'Arrangera vertikalt', desc: 'Arrangera markerade kort i vertikal kolumn', action: async () => {
-      await applyArrangement(arrangeVertical, 'Vertical');
-    }},
-    { key: 'H', icon: '↔️', name: 'Arrangera horisontellt', desc: 'Arrangera markerade kort i horisontell rad', action: async () => {
-      await applyArrangement(arrangeHorizontal, 'Horizontal');
-    }},
-    { key: 'Q', icon: '◉', name: 'Arrangera cirkel', desc: 'Klistra in och arrangera i cirkel (om kopierade kort), annars arrangera markerade', action: async () => {
-      if (clipboard.length > 0) {
-        await pasteCardsWithArrangement(arrangeCluster, 'Cluster');
-      } else {
-        await applyArrangement(arrangeCluster, 'Cluster');
-      }
-    }},
-    { key: 'G+V', icon: '⊞↕', name: 'Arrangera grid vertikalt', desc: 'Klistra in och arrangera vertikalt (om kopierade kort), annars arrangera markerade', action: async () => {
-      if (clipboard.length > 0) {
-        await pasteCardsWithArrangement(arrangeGridVertical, 'Grid Vertical');
-      } else {
-        await applyArrangement(arrangeGridVertical, 'Grid Vertical');
-      }
-    }},
-    { key: 'G+H', icon: '⊞↔', name: 'Arrangera grid horisontellt', desc: 'Arrangera markerade kort i horisontella rader', action: async () => {
-      await applyArrangement(arrangeGridHorizontal, 'Grid Horizontal');
-    }},
-    { key: 'G+T', icon: '⊞⤓', name: 'Arrangera grid överlappande', desc: 'Arrangera markerade kort överlappande (Kanban-stil)', action: async () => {
-      await applyArrangement(arrangeGridTopAligned, 'Grid Top-Aligned');
-    }},
-    { key: '-', icon: '🎨', name: 'Byt tema', desc: 'Växla mellan ljust/mörkt/e-ink tema', action: () => {
-      window.dispatchEvent(new CustomEvent('toggleTheme'));
-    }},
-    { key: '-', icon: '🔄', name: 'Byt vy', desc: 'Växla mellan bräd-vy och kolumn-vy', action: () => {
-      window.dispatchEvent(new CustomEvent('toggleView'));
-    }},
-    { key: 'Ctrl+A', icon: '☑', name: 'Markera alla', desc: 'Markera alla kort på canvas', action: () => {
-      const isEink = document.body.classList.contains('eink-theme');
-      const allCards = layer.getChildren(node => node.getAttr('cardId'));
-      allCards.forEach(group => {
-        const background = group.findOne('Rect');
-        group.addName('selected');
-        if (background) {
-          if (isEink) {
-            background.stroke('#000000');
-            background.strokeWidth(3);
-          } else {
-            background.stroke('#2196F3');
-            background.strokeWidth(3);
-          }
-        }
-      });
-      layer.batchDraw();
-    }},
-    { key: 'Escape', icon: '☐', name: 'Avmarkera alla', desc: 'Avmarkera alla markerade kort', action: () => {
-      deselectAllCards();
-    }},
-    { key: 'F', icon: '⛶', name: 'Passa alla kort', desc: 'Zooma så att alla kort syns på skärmen', action: () => {
-      fitAllCards();
-    }},
-    { key: 'Scroll', icon: '🔍', name: 'Zooma', desc: 'Zooma in/ut med mushjulet', action: null },
-    { key: 'Ctrl+Drag', icon: '✋', name: 'Panorera', desc: 'Panorera canvas genom att hålla Ctrl och dra', action: null },
-    { key: 'Double-click', icon: '✏️', name: 'Redigera kort', desc: 'Dubbelklicka på kort för att redigera', action: null },
-    { key: 'Right-click', icon: '📋', name: 'Kontextmeny', desc: 'Högerklicka på kort för meny', action: null },
-    { key: 'Drag', icon: '🔄', name: 'Flytta kort', desc: 'Dra kort för att flytta dem', action: null },
-  ];
-
-  // Create modal overlay
   const overlay = document.createElement('div');
+  overlay.dataset.commandPalette = 'overlay';
   overlay.style.cssText = `
     position: fixed;
     top: 0;
@@ -7338,7 +7071,6 @@ function showCommandPalette() {
     overflow-y: auto;
   `;
 
-  // Create command palette
   const palette = document.createElement('div');
   palette.style.cssText = `
     background: white;
@@ -7351,15 +7083,33 @@ function showCommandPalette() {
     overflow-y: auto;
   `;
 
-  // Function to render command list
+  let handleKeyboard;
+
+  const cleanup = () => {
+    if (overlay && overlay.parentNode) {
+      document.body.removeChild(overlay);
+    }
+    if (handleKeyboard) {
+      document.removeEventListener('keydown', handleKeyboard);
+    }
+  };
+
+  const descriptionFor = (cmd) => cmd.description || cmd.desc || '';
+
+  const commandsWithIndex = commands.map((cmd, idx) => ({
+    ...cmd,
+    originalIndex: idx,
+    keyLabel: formatKeyBindings(cmd) || cmd.keyBinding || ''
+  }));
+
   const renderCommands = (filteredCommands) => {
     const commandList = palette.querySelector('#command-list');
-    commandList.innerHTML = filteredCommands.map((cmd, idx) => `
+    commandList.innerHTML = filteredCommands.map((cmd) => `
       <div class="command-item" data-original-index="${cmd.originalIndex}" style="
         padding: 16px;
-        background: ${cmd.action ? '#f5f5f5' : '#fafafa'};
+        background: ${cmd.handler ? '#f5f5f5' : '#fafafa'};
         border-radius: 8px;
-        cursor: ${cmd.action ? 'pointer' : 'default'};
+        cursor: ${cmd.handler ? 'pointer' : 'default'};
         transition: all 0.15s;
         border: 2px solid transparent;
         display: flex;
@@ -7367,14 +7117,14 @@ function showCommandPalette() {
         gap: 16px;
       ">
         <div style="font-size: 24px; flex-shrink: 0;">
-          ${cmd.icon}
+          ${cmd.icon || '⌘'}
         </div>
         <div style="flex: 1; min-width: 0;">
           <div style="font-weight: 600; font-size: 16px; color: #1a1a1a; margin-bottom: 2px;">
-            ${cmd.name}
+            ${cmd.name || cmd.id}
           </div>
           <div style="font-size: 13px; color: #666;">
-            ${cmd.desc}
+            ${descriptionFor(cmd)}
           </div>
         </div>
         <div style="
@@ -7388,18 +7138,16 @@ function showCommandPalette() {
           white-space: nowrap;
           flex-shrink: 0;
         ">
-          ${cmd.key}
+          ${cmd.keyLabel || '—'}
         </div>
       </div>
     `).join('');
 
-    // Add hover and click effects
     const commandItems = commandList.querySelectorAll('.command-item');
-    commandItems.forEach((item) => {
-      const originalIdx = parseInt(item.dataset.originalIndex);
-      const cmd = commands[originalIdx];
+    commandItems.forEach((item, index) => {
+      const cmd = filteredCommands[index];
 
-      if (cmd.action) {
+      if (cmd?.handler) {
         item.addEventListener('mouseenter', () => {
           item.style.background = '#e3f2fd';
           item.style.borderColor = '#2196F3';
@@ -7414,7 +7162,7 @@ function showCommandPalette() {
 
         item.addEventListener('click', async () => {
           cleanup();
-          await cmd.action();
+          await cmd.handler({ source: 'palette' });
         });
       }
     });
@@ -7451,17 +7199,11 @@ function showCommandPalette() {
   overlay.appendChild(palette);
   document.body.appendChild(overlay);
 
-  // Add commands with original index for tracking
-  const commandsWithIndex = commands.map((cmd, idx) => ({ ...cmd, originalIndex: idx }));
-
-  // Track selected index for arrow navigation
   let selectedIndex = -1;
   let currentCommands = commandsWithIndex;
 
-  // Initial render with all commands
-  renderCommands(commandsWithIndex);
+  renderCommands(currentCommands);
 
-  // Helper to highlight selected command
   const highlightCommand = (index) => {
     const commandList = palette.querySelector('#command-list');
     const items = commandList.querySelectorAll('.command-item');
@@ -7474,14 +7216,13 @@ function showCommandPalette() {
         item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       } else {
         const originalCmd = currentCommands[idx];
-        item.style.background = originalCmd?.action ? '#f5f5f5' : '#fafafa';
+        item.style.background = originalCmd?.handler ? '#f5f5f5' : '#fafafa';
         item.style.borderColor = 'transparent';
         item.style.transform = 'scale(1)';
       }
     });
   };
 
-  // Add search functionality
   const searchInput = palette.querySelector('#command-search');
   searchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase().trim();
@@ -7494,9 +7235,10 @@ function showCommandPalette() {
     }
 
     const filtered = commandsWithIndex.filter(cmd =>
-      cmd.name.toLowerCase().includes(query) ||
-      cmd.desc.toLowerCase().includes(query) ||
-      cmd.key.toLowerCase().includes(query)
+      (cmd.name || '').toLowerCase().includes(query) ||
+      descriptionFor(cmd).toLowerCase().includes(query) ||
+      (cmd.keyLabel || '').toLowerCase().includes(query) ||
+      (cmd.category || '').toLowerCase().includes(query)
     );
 
     currentCommands = filtered;
@@ -7504,22 +7246,16 @@ function showCommandPalette() {
     selectedIndex = -1;
   });
 
-  // Don't auto-focus search - allows keyboard shortcuts to work immediately
-  // Users can press '/' or click to focus search if needed
-
-  // Tab or '/' to focus search
   searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Tab' || e.key === 'ArrowDown') {
       e.preventDefault();
       searchInput.blur();
       selectedIndex = -1;
-      // Trigger first arrow down
       const downEvent = new KeyboardEvent('keydown', { key: 'ArrowDown' });
       document.dispatchEvent(downEvent);
     }
   });
 
-  // Handle focus on border
   searchInput.addEventListener('focus', () => {
     searchInput.style.borderColor = '#2196F3';
   });
@@ -7527,36 +7263,23 @@ function showCommandPalette() {
     searchInput.style.borderColor = '#e0e0e0';
   });
 
-  // Cleanup function
-  const cleanup = () => {
-    if (overlay && overlay.parentNode) {
-      document.body.removeChild(overlay);
-    }
-  };
-
-  // ESC to close, arrow navigation, Enter to select, and keyboard shortcuts
-  const handleKeyboard = async (e) => {
-    // Always allow ESC
+  handleKeyboard = async (e) => {
     if (e.key === 'Escape') {
       cleanup();
-      document.removeEventListener('keydown', handleKeyboard);
       return;
     }
 
-    // If typing in search, only handle arrow keys and Enter
     const isTypingInSearch = document.activeElement === searchInput;
 
-    // Arrow navigation (works everywhere)
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      const actionableCommands = currentCommands.filter(cmd => cmd.action);
+      const actionableCommands = currentCommands.filter(cmd => cmd.handler);
       if (actionableCommands.length === 0) return;
 
-      // Find next actionable command index
       let nextIndex = selectedIndex;
       do {
         nextIndex = (nextIndex + 1) % currentCommands.length;
-      } while (!currentCommands[nextIndex]?.action && nextIndex !== selectedIndex);
+      } while (!currentCommands[nextIndex]?.handler && nextIndex !== selectedIndex);
 
       selectedIndex = nextIndex;
       highlightCommand(selectedIndex);
@@ -7565,70 +7288,49 @@ function showCommandPalette() {
 
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-      const actionableCommands = currentCommands.filter(cmd => cmd.action);
+      const actionableCommands = currentCommands.filter(cmd => cmd.handler);
       if (actionableCommands.length === 0) return;
 
-      // Find previous actionable command index
       let prevIndex = selectedIndex;
       do {
         prevIndex = prevIndex <= 0 ? currentCommands.length - 1 : prevIndex - 1;
-      } while (!currentCommands[prevIndex]?.action && prevIndex !== selectedIndex);
+      } while (!currentCommands[prevIndex]?.handler && prevIndex !== selectedIndex);
 
       selectedIndex = prevIndex;
       highlightCommand(selectedIndex);
       return;
     }
 
-    // Enter to execute selected command
     if (e.key === 'Enter') {
       e.preventDefault();
       if (selectedIndex >= 0 && selectedIndex < currentCommands.length) {
         const selectedCmd = currentCommands[selectedIndex];
-        if (selectedCmd?.action) {
+        if (selectedCmd?.handler) {
           cleanup();
           document.removeEventListener('keydown', handleKeyboard);
-          await selectedCmd.action();
+          await selectedCmd.handler({ source: 'palette' });
           return;
         }
       }
-      // If no selection, do nothing (search field will handle it)
       return;
     }
 
-    // '/' to focus search
     if (e.key === '/' && !isTypingInSearch) {
       e.preventDefault();
       searchInput.focus();
       return;
     }
 
-    // Don't handle letter shortcuts when typing in search
     if (isTypingInSearch) {
-      // Stop event from propagating to global keyboard handler
       e.stopPropagation();
       return;
-    }
-
-    // Check for keyboard shortcuts (single letter, only when NOT typing in search)
-    const key = e.key.toUpperCase();
-    const command = commands.find(cmd =>
-      cmd.key.toUpperCase() === key && cmd.action
-    );
-
-    if (command) {
-      e.preventDefault();
-      cleanup();
-      document.removeEventListener('keydown', handleKeyboard);
-      await command.action();
     }
   };
   document.addEventListener('keydown', handleKeyboard);
 
-  // Click overlay to close
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
       cleanup();
-      document.removeEventListener('keydown', handleKeyboard);
     }
   });
 }
