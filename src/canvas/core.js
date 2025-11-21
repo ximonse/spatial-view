@@ -924,7 +924,7 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
 
     <div style="margin-bottom: 20px;">
       <label style="display: block; margin-bottom: 8px; font-weight: 500;">Kortfärg:</label>
-      <div id="editColorPicker" style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <div id="editColorPicker" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
         <div class="color-dot" data-color="" style="width: 36px; height: 36px; border-radius: 50%;
              background: var(--bg-secondary); border: 3px solid var(--border-color); cursor: pointer;
              display: flex; align-items: center; justify-content: center; font-size: 20px;"
@@ -945,6 +945,12 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
              background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
         <div class="color-dot" data-color="card-color-8" style="width: 36px; height: 36px; border-radius: 50%;
              background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+      </div>
+      <div id="customColorContainer" style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 14px;">Valfri färg:</span>
+        <input type="color" id="customColorInput" style="width: 42px; height: 32px; padding: 0; border: 2px solid var(--border-color); border-radius: 6px; background: transparent;">
+        <input type="text" id="customColorHex" placeholder="#rrggbb" style="flex: 1; padding: 8px; font-size: 14px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary);">
+        <button id="applyCustomColor" style="padding: 8px 12px; font-size: 14px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">Använd</button>
       </div>
     </div>
     ` : ''}
@@ -991,32 +997,100 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
   let selectedColor = currentColor;
   if (!isImageBack) {
     const colorDots = document.querySelectorAll('#editColorPicker .color-dot');
+    const customColorInput = document.getElementById('customColorInput');
+    const customColorHexInput = document.getElementById('customColorHex');
+    const applyCustomColorBtn = document.getElementById('applyCustomColor');
+    const customColorContainer = document.getElementById('customColorContainer');
+
+    const setDotBorders = () => {
+      colorDots.forEach(d => {
+        if (d.dataset.color === '') {
+          d.style.border = '3px solid var(--border-color)';
+        } else if (d.dataset.color === 'card-color-8') {
+          d.style.border = '3px solid #ddd';
+        } else {
+          d.style.border = '3px solid transparent';
+        }
+      });
+    };
+
+    const highlightCustom = () => {
+      customColorContainer.style.outline = '3px solid var(--accent-color)';
+      customColorContainer.style.borderRadius = '8px';
+    };
+
+    const clearCustomHighlight = () => {
+      customColorContainer.style.outline = 'none';
+    };
+
+    const setSelectedColor = (color) => {
+      selectedColor = color;
+      if (color && color.startsWith('#')) {
+        highlightCustom();
+        setDotBorders();
+      } else {
+        clearCustomHighlight();
+      }
+    };
+
+    // Prefill custom color inputs based on current color (supports imported colors)
+    const initialCustomColor = currentColor ? getCardColor(currentColor) : '#ffffff';
+    if (customColorInput) customColorInput.value = initialCustomColor;
+    if (customColorHexInput) customColorHexInput.value = initialCustomColor;
 
     // Highlight current color
+    let currentMatched = false;
     colorDots.forEach(dot => {
-      if (dot.dataset.color === currentColor) {
+      if (dot.dataset.color === currentColor || (!currentColor && dot.dataset.color === '')) {
         dot.style.border = '3px solid var(--accent-color)';
-      } else if (!currentColor && dot.dataset.color === '') {
-        dot.style.border = '3px solid var(--accent-color)';
+        currentMatched = true;
       }
 
       dot.addEventListener('click', function() {
-        // Remove selection from all
-        colorDots.forEach(d => {
-          if (d.dataset.color === '') {
-            d.style.border = '3px solid var(--border-color)';
-          } else if (d.dataset.color === 'card-color-8') {
-            d.style.border = '3px solid #ddd';
-          } else {
-            d.style.border = '3px solid transparent';
-          }
-        });
-
-        // Select this one
+        clearCustomHighlight();
+        setDotBorders();
         this.style.border = '3px solid var(--accent-color)';
         selectedColor = this.dataset.color;
       });
     });
+
+    if (!currentMatched && currentColor && currentColor.startsWith('#')) {
+      highlightCustom();
+    }
+
+    const isValidHex = (value) => /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(value);
+
+    const applyCustomColor = () => {
+      const hexInput = (customColorHexInput ? customColorHexInput.value.trim() : '') || (customColorInput ? customColorInput.value.trim() : '');
+      if (!isValidHex(hexInput)) {
+        alert('Ange en giltig hexkod, t.ex. #ff8800');
+        return;
+      }
+
+      if (customColorInput) customColorInput.value = hexInput;
+      if (customColorHexInput) customColorHexInput.value = hexInput;
+      setDotBorders();
+      highlightCustom();
+      setSelectedColor(hexInput.toLowerCase());
+    };
+
+    if (applyCustomColorBtn) {
+      applyCustomColorBtn.addEventListener('click', applyCustomColor);
+    }
+
+    if (customColorInput) {
+      customColorInput.addEventListener('input', () => {
+        if (customColorHexInput) customColorHexInput.value = customColorInput.value;
+      });
+    }
+
+    if (customColorHexInput) {
+      customColorHexInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          applyCustomColor();
+        }
+      });
+    }
   }
 
   const cleanup = () => {
@@ -1175,7 +1249,7 @@ async function createBulkEditor(cardIds) {
 
     <div style="margin-bottom: 20px;">
       <label style="display: block; margin-bottom: 8px; font-weight: 500;">Kortfärg:</label>
-      <div id="bulkColorPicker" style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <div id="bulkColorPicker" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
         <div class="color-dot" data-color="none" style="width: 36px; height: 36px; border-radius: 50%;
              background: var(--bg-secondary); border: 3px solid var(--accent-color); cursor: pointer;
              display: flex; align-items: center; justify-content: center; font-size: 20px;"
@@ -1200,6 +1274,12 @@ async function createBulkEditor(cardIds) {
              background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
         <div class="color-dot" data-color="card-color-8" style="width: 36px; height: 36px; border-radius: 50%;
              background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+      </div>
+      <div id="bulkCustomColorContainer" style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 14px;">Valfri färg:</span>
+        <input type="color" id="bulkCustomColorInput" style="width: 42px; height: 32px; padding: 0; border: 2px solid var(--border-color); border-radius: 6px; background: transparent;">
+        <input type="text" id="bulkCustomColorHex" placeholder="#rrggbb" style="flex: 1; padding: 8px; font-size: 14px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary);">
+        <button id="bulkApplyCustomColor" style="padding: 8px 12px; font-size: 14px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">Använd</button>
       </div>
     </div>
 
@@ -1232,27 +1312,78 @@ async function createBulkEditor(cardIds) {
   // Handle color selection
   let selectedColor = 'none'; // Default: don't change
   const colorDots = document.querySelectorAll('#bulkColorPicker .color-dot');
+  const bulkCustomColorInput = document.getElementById('bulkCustomColorInput');
+  const bulkCustomColorHex = document.getElementById('bulkCustomColorHex');
+  const bulkApplyCustomColor = document.getElementById('bulkApplyCustomColor');
+  const bulkCustomColorContainer = document.getElementById('bulkCustomColorContainer');
+
+  const resetBulkDotBorders = () => {
+    colorDots.forEach(d => {
+      if (d.dataset.color === 'none') {
+        d.style.border = '3px solid transparent';
+      } else if (d.dataset.color === '') {
+        d.style.border = '3px solid var(--border-color)';
+      } else if (d.dataset.color === 'card-color-8') {
+        d.style.border = '3px solid #ddd';
+      } else {
+        d.style.border = '3px solid transparent';
+      }
+    });
+  };
+
+  const highlightBulkCustom = () => {
+    bulkCustomColorContainer.style.outline = '3px solid var(--accent-color)';
+    bulkCustomColorContainer.style.borderRadius = '8px';
+  };
+
+  const clearBulkCustomHighlight = () => {
+    bulkCustomColorContainer.style.outline = 'none';
+  };
+
+  const isValidHex = (value) => /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(value);
+
+  const applyBulkCustomColor = () => {
+    const hexInput = (bulkCustomColorHex ? bulkCustomColorHex.value.trim() : '') || (bulkCustomColorInput ? bulkCustomColorInput.value.trim() : '');
+    if (!isValidHex(hexInput)) {
+      alert('Ange en giltig hexkod, t.ex. #00cc99');
+      return;
+    }
+
+    if (bulkCustomColorInput) bulkCustomColorInput.value = hexInput;
+    if (bulkCustomColorHex) bulkCustomColorHex.value = hexInput;
+    resetBulkDotBorders();
+    highlightBulkCustom();
+    selectedColor = hexInput.toLowerCase();
+  };
 
   colorDots.forEach(dot => {
     dot.addEventListener('click', function() {
-      // Remove selection from all
-      colorDots.forEach(d => {
-        if (d.dataset.color === 'none') {
-          d.style.border = '3px solid transparent';
-        } else if (d.dataset.color === '') {
-          d.style.border = '3px solid var(--border-color)';
-        } else if (d.dataset.color === 'card-color-8') {
-          d.style.border = '3px solid #ddd';
-        } else {
-          d.style.border = '3px solid transparent';
-        }
-      });
+      clearBulkCustomHighlight();
+      resetBulkDotBorders();
 
       // Select this one
       this.style.border = '3px solid var(--accent-color)';
       selectedColor = this.dataset.color;
     });
   });
+
+  if (bulkApplyCustomColor) {
+    bulkApplyCustomColor.addEventListener('click', applyBulkCustomColor);
+  }
+
+  if (bulkCustomColorInput) {
+    bulkCustomColorInput.addEventListener('input', () => {
+      if (bulkCustomColorHex) bulkCustomColorHex.value = bulkCustomColorInput.value;
+    });
+  }
+
+  if (bulkCustomColorHex) {
+    bulkCustomColorHex.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        applyBulkCustomColor();
+      }
+    });
+  }
 
   const cleanup = () => {
     if (overlay.parentNode) {
