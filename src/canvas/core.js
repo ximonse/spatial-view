@@ -40,6 +40,7 @@ import {
   arrangeGridTopAligned
 } from './arrangement.js';
 import { addRecentCardColor } from '../utils/recent-card-colors.js';
+import { getCardColorValue, getColorOptionsForTheme, useColoredCards } from '../utils/card-colors.js';
 import { registerCommand, unregisterCommand, executeCommandFromEvent, getCommands, formatKeyBindings } from '../lib/command-registry.js';
 
 // ============================================================================
@@ -73,41 +74,26 @@ const registeredCanvasCommands = new Set();
 // SECTION 2: RENDERING (Cards, Colors, Visual Elements)
 // ============================================================================
 
+// Backwards compatibility for legacy string values
+const LEGACY_COLOR_MAP = {
+  'yellow': 'card-color-1',
+  'red': 'card-color-2',
+  'green': 'card-color-3',
+  'blue': 'card-color-4',
+  'purple': 'card-color-5',
+  'magenta': 'card-color-6',
+  'pink': 'card-color-6',
+  'orange': 'card-color-7',
+  'gray': 'card-color-8',
+  'grey': 'card-color-8',
+};
+
 /**
- * Get card color from cardColor property
+ * Get themed card color from cardColor property
  */
 function getCardColor(cardColor) {
-  // If already a hex color, return it directly
-  if (cardColor && cardColor.startsWith('#')) {
-    return cardColor;
-  }
-
-  const colorMap = {
-    // Zotero-färger (från highlight-systemet)
-    'card-color-1': '#ffd400', // Gul
-    'card-color-2': '#ff6666', // Röd
-    'card-color-3': '#5fb236', // Grön
-    'card-color-4': '#2ea8e5', // Blå
-    'card-color-5': '#a28ae5', // Lila
-    'card-color-6': '#e56eee', // Magenta
-    'card-color-7': '#f19837', // Orange
-    'card-color-8': '#aaaaaa', // Grå
-
-    // Format: color names (för bakåtkompatibilitet)
-    'yellow': '#ffd400',
-    'red': '#ff6666',
-    'green': '#5fb236',
-    'blue': '#2ea8e5',
-    'purple': '#a28ae5',
-    'magenta': '#e56eee',
-    'pink': '#e56eee',
-    'orange': '#f19837',
-    'gray': '#aaaaaa',
-    'grey': '#aaaaaa',
-    'white': '#ffffff'
-  };
-
-  return colorMap[cardColor] || '#ffffff'; // Default white
+  const normalized = LEGACY_COLOR_MAP[cardColor] || cardColor;
+  return getCardColorValue(normalized);
 }
 
 /**
@@ -483,22 +469,10 @@ function renderTextCard(group, cardData) {
   const isEink = document.body.classList.contains('eink-theme');
   const isDark = document.body.classList.contains('dark-theme');
 
-  // E-ink: white with light tint if colored, otherwise white
+  // E-ink: always white, Dark: unified neutral tone
   let fillColor = cardColor;
   if (isEink) {
-    if (cardData.cardColor && cardData.cardColor !== 'yellow') {
-      // Light tint based on card color
-      const colorMap = {
-        blue: '#e6f2ff',
-        green: '#e6ffe6',
-        pink: '#ffe6f2',
-        purple: '#f2e6ff',
-        orange: '#fff2e6'
-      };
-      fillColor = colorMap[cardData.cardColor] || '#ffffff';
-    } else {
-      fillColor = '#ffffff';
-    }
+    fillColor = '#ffffff';
   } else if (isDark) {
     fillColor = '#2d3748';
   }
@@ -1645,16 +1619,15 @@ async function showQuickColorPicker(x, y, cardIds) {
     max-width: 200px;
   `;
 
+  const showColoredDots = useColoredCards();
   const colors = [
-    { id: '', label: '⭘', title: 'Ingen färg' },
-    { id: 'card-color-1', color: '#d4f2d4', title: 'Grön' },
-    { id: 'card-color-2', color: '#ffe4b3', title: 'Orange' },
-    { id: 'card-color-3', color: '#ffc1cc', title: 'Röd' },
-    { id: 'card-color-4', color: '#fff7b3', title: 'Gul' },
-    { id: 'card-color-5', color: '#f3e5f5', title: 'Lila' },
-    { id: 'card-color-6', color: '#c7e7ff', title: 'Blå' },
-    { id: 'card-color-7', color: '#e0e0e0', title: 'Grå' },
-    { id: 'card-color-8', color: '#ffffff', title: 'Vit' }
+    { id: '', label: '⭘', title: 'Ingen färg', color: 'var(--bg-secondary)' },
+    ...getColorOptionsForTheme({ colored: showColoredDots }).map(option => ({
+      id: option.id,
+      color: option.swatch,
+      title: `${option.label} (${option.shortcut})`,
+      label: option.shortcut,
+    })),
   ];
 
   colors.forEach(colorInfo => {
@@ -1671,10 +1644,13 @@ async function showQuickColorPicker(x, y, cardIds) {
       justify-content: center;
       font-size: 24px;
     `;
-    if (!colorInfo.color) {
+    if (!showColoredDots && colorInfo.id) {
+      dot.textContent = colorInfo.label;
+      dot.style.color = 'var(--text-primary)';
+    } else if (!colorInfo.color) {
       dot.textContent = colorInfo.label;
     }
-    dot.title = colorInfo.title;
+    dot.title = colorInfo.title || colorInfo.label;
 
     dot.addEventListener('click', async () => {
       const cards = await getAllCards();
@@ -1950,15 +1926,7 @@ export async function updateCardFills() {
         fillColor = cardColor; // Default to the card's own color
 
         if (isEink) {
-          if (cardData.cardColor && cardData.cardColor !== 'yellow') {
-            const colorMap = {
-              'blue': '#e6f2ff', 'green': '#e6ffe6', 'pink': '#ffe6f2',
-              'purple': '#f2e6ff', 'orange': '#fff2e6'
-            };
-            fillColor = colorMap[cardData.cardColor] || '#ffffff';
-          } else {
-            fillColor = '#ffffff';
-          }
+          fillColor = '#ffffff';
         } else if (isDark) {
           // In dark mode, text cards have a standard dark background, ignoring their color property
           fillColor = '#2d3748';
@@ -2764,6 +2732,29 @@ async function handleDeleteSelectedCards() {
   }
 }
 
+async function handleColorShortcut(key) {
+  const shortcutNumber = parseInt(key, 10);
+  if (Number.isNaN(shortcutNumber) || shortcutNumber < 1 || shortcutNumber > 8) return;
+
+  const selectedNodes = layer.find('.selected');
+  if (!selectedNodes.length) return;
+
+  const cards = await getAllCards();
+  const colorId = `card-color-${shortcutNumber}`;
+
+  for (const node of selectedNodes) {
+    const cardId = node.getAttr('cardId');
+    if (!cardId) continue;
+    const card = cards.find(c => c.id === cardId);
+    if (card) {
+      await updateCard(cardId, { cardColor: colorId });
+    }
+  }
+
+  addRecentCardColor(colorId);
+  await reloadCanvas();
+}
+
 function handleSelectAllCards() {
   const isEink = document.body.classList.contains('eink-theme');
   const allCards = layer.getChildren(node => node.getAttr('cardId'));
@@ -2875,6 +2866,15 @@ function setupKeyboardShortcuts() {
   const heldChords = new Set();
 
   const handleKeyDown = (e) => {
+    const target = e.target;
+    const isInputTarget = target && ((target.tagName === 'INPUT') || (target.tagName === 'TEXTAREA') || target.isContentEditable);
+
+    if (!isInputTarget && !e.ctrlKey && !e.metaKey && !e.altKey && /^[1-8]$/.test(e.key)) {
+      e.preventDefault();
+      handleColorShortcut(e.key);
+      return;
+    }
+
     if (e.key?.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
       heldChords.add('g');
       return;
