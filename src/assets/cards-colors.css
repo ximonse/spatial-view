@@ -1,17 +1,33 @@
-        /* Card Colors - Light Theme */
-        .light-theme .card-color-1 { background-color: #ffebee !important; } /* Soft Red */
-        .light-theme .card-color-2 { background-color: #e3f2fd !important; } /* Soft Blue */
-        .light-theme .card-color-3 { background-color: #e8f5e8 !important; } /* Soft Green */
-        .light-theme .card-color-4 { background-color: #fff3e0 !important; } /* Soft Orange */
-        .light-theme .card-color-5 { background-color: #f3e5f5 !important; } /* Soft Purple */
-        
-        /* Card Colors - Dark Theme */
-        .dark-theme .card-color-1 { background-color: #4a2c2a !important; } /* Dark Red */
-        .dark-theme .card-color-2 { background-color: #1e3a5f !important; } /* Dark Blue */
-        .dark-theme .card-color-3 { background-color: #2d4a2d !important; } /* Dark Green */
-        .dark-theme .card-color-4 { background-color: #4a3429 !important; } /* Dark Orange */
-        .dark-theme .card-color-5 { background-color: #3d2a4a !important; } /* Dark Purple */
-        
+        /* Card Colors - Light Theme (Zotero palette, softened) */
+        .light-theme .card-color-1 { background-color: #fff4b8 !important; } /* Gul */
+        .light-theme .card-color-2 { background-color: #ffd6d6 !important; } /* Röd */
+        .light-theme .card-color-3 { background-color: #d4efc7 !important; } /* Grön */
+        .light-theme .card-color-4 { background-color: #cbe9ff !important; } /* Blå */
+        .light-theme .card-color-5 { background-color: #e7ddff !important; } /* Lila */
+        .light-theme .card-color-6 { background-color: #ffd6ff !important; } /* Magenta */
+        .light-theme .card-color-7 { background-color: #ffe3c4 !important; } /* Orange */
+        .light-theme .card-color-8 { background-color: #f0f0f0 !important; } /* Grå */
+
+        /* Card Colors - Dark Theme / E-ink (neutralized) */
+        .dark-theme .card-color-1,
+        .dark-theme .card-color-2,
+        .dark-theme .card-color-3,
+        .dark-theme .card-color-4,
+        .dark-theme .card-color-5,
+        .dark-theme .card-color-6,
+        .dark-theme .card-color-7,
+        .dark-theme .card-color-8,
+        .eink-theme .card-color-1,
+        .eink-theme .card-color-2,
+        .eink-theme .card-color-3,
+        .eink-theme .card-color-4,
+        .eink-theme .card-color-5,
+        .eink-theme .card-color-6,
+        .eink-theme .card-color-7,
+        .eink-theme .card-color-8 {
+            background-color: var(--bg-primary) !important;
+        }
+
         /* Card Colors - Sepia Theme */
         .sepia-theme .card-color-1 { background-color: #f4e6d7 !important; } /* Sepia Red */
         .sepia-theme .card-color-2 { background-color: #e6d7c3 !important; } /* Sepia Blue */
@@ -90,24 +106,32 @@
         }
         
         /* Color picker dot colors - Light theme */
-        .color-picker-dot.card-color-1 { background-color: #d4f2d4; } /* Grön */
-        .color-picker-dot.card-color-2 { background-color: #ffe4b3; } /* Orange */
-        .color-picker-dot.card-color-3 { background-color: #ffc1cc; } /* Röd */
-        .color-picker-dot.card-color-4 { background-color: #fff7b3; } /* Gul */
-        .color-picker-dot.card-color-5 { background-color: #f3e5f5; } /* Lila */
-        .color-picker-dot.card-color-6 { background-color: #c7e7ff; } /* Blå */
-        .color-picker-dot.card-color-7 { background-color: #e0e0e0; } /* Grå */
-        .color-picker-dot.card-color-8 { background-color: #ffffff; } /* Vit */
-        
-        /* Dark theme color picker dots */
-        .dark-theme .color-picker-dot.card-color-1 { background-color: #3d5a3d; } /* Mörk Grön */
-        .dark-theme .color-picker-dot.card-color-2 { background-color: #5a4d3a; } /* Mörk Orange */
-        .dark-theme .color-picker-dot.card-color-3 { background-color: #5a3c3a; } /* Mörk Röd */
-        .dark-theme .color-picker-dot.card-color-4 { background-color: #5a5a3a; } /* Mörk Gul */
-        .dark-theme .color-picker-dot.card-color-5 { background-color: #4a3d5a; } /* Mörk Lila */
-        .dark-theme .color-picker-dot.card-color-6 { background-color: #2e4a6f; } /* Mörk Blå */
-        .dark-theme .color-picker-dot.card-color-7 { background-color: #555555; } /* Mörk Grå */
-        .dark-theme .color-picker-dot.card-color-8 { background-color: #8a8a8a; } /* Ljusgrå */
+        .color-picker-dot.card-color-1 { background-color: #fff4b8; } /* Gul */
+        .color-picker-dot.card-color-2 { background-color: #ffd6d6; } /* Röd */
+        .color-picker-dot.card-color-3 { background-color: #d4efc7; } /* Grön */
+        .color-picker-dot.card-color-4 { background-color: #cbe9ff; } /* Blå */
+        .color-picker-dot.card-color-5 { background-color: #e7ddff; } /* Lila */
+        .color-picker-dot.card-color-6 { background-color: #ffd6ff; } /* Magenta */
+        .color-picker-dot.card-color-7 { background-color: #ffe3c4; } /* Orange */
+        .color-picker-dot.card-color-8 { background-color: #f0f0f0; } /* Grå */
+
+        /* Dark theme color picker dots (neutral) */
+        .dark-theme .color-picker-dot.card-color-1,
+        .dark-theme .color-picker-dot.card-color-2,
+        .dark-theme .color-picker-dot.card-color-3,
+        .dark-theme .color-picker-dot.card-color-4,
+        .dark-theme .color-picker-dot.card-color-5,
+        .dark-theme .color-picker-dot.card-color-6,
+        .dark-theme .color-picker-dot.card-color-7,
+        .dark-theme .color-picker-dot.card-color-8,
+        .eink-theme .color-picker-dot.card-color-1,
+        .eink-theme .color-picker-dot.card-color-2,
+        .eink-theme .color-picker-dot.card-color-3,
+        .eink-theme .color-picker-dot.card-color-4,
+        .eink-theme .color-picker-dot.card-color-5,
+        .eink-theme .color-picker-dot.card-color-6,
+        .eink-theme .color-picker-dot.card-color-7,
+        .eink-theme .color-picker-dot.card-color-8 { background-color: var(--bg-secondary); }
         
         /* Sepia theme color picker dots */
         .sepia-theme .color-picker-dot.card-color-1 { background-color: #ded6c7; } /* Sepia Grön */
