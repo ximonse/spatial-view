@@ -1,8 +1,10 @@
 import { clearClipboard, deselectAllCards, searchCards } from '../lib/canvas.js';
+import { registerCommand, unregisterCommand } from '../lib/command-registry.js';
 import { renderColumnView } from './view-switcher.js';
 
 export function initSearchBar(state) {
   const searchInput = document.getElementById('search-input');
+  const registeredIds = new Set();
 
   const handleSearch = async (event) => {
     const query = event.target.value;
@@ -21,37 +23,59 @@ export function initSearchBar(state) {
 
   searchInput?.addEventListener('input', debouncedSearch);
 
-  // Escape to clear search, Enter to blur (local - when focused)
+  // Enter to blur when focused (Escape handled via command registry)
   searchInput?.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      searchInput.value = '';
-      handleSearch({ target: searchInput }); // Clear search results
-      searchInput.blur(); // Unfocus the search input
-    } else if (e.key === 'Enter') {
+    if (e.key === 'Enter') {
       e.preventDefault();
       searchInput.blur(); // Unfocus so keyboard shortcuts work
     }
   });
 
-  // Global Escape handler for search, clipboard, and selection
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      // Clear clipboard
-      clearClipboard();
+  const registerSearchCommands = () => {
+    unregisterCommand('focus-search');
+    unregisterCommand('clear-selection');
 
-      // Deselect all cards
+    const focusHandler = () => {
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+    };
+
+    const clearHandler = () => {
+      const paletteOpen = document.querySelector('[data-command-palette="overlay"]');
+      if (paletteOpen) return;
+
+      clearClipboard();
       deselectAllCards();
 
-      // If search has content, clear it
       if (searchInput && searchInput.value) {
         searchInput.value = '';
-        handleSearch({ target: searchInput }); // Clear search results
-        searchInput.blur(); // Unfocus the search input
+        handleSearch({ target: searchInput });
+        searchInput.blur();
       }
-    }
-  });
+    };
 
-  return { handleSearch };
+    registerCommand({ id: 'focus-search', handler: focusHandler, allowInInputs: true });
+    registeredIds.add('focus-search');
+    registerCommand({
+      id: 'clear-selection',
+      handler: clearHandler,
+      allowInInputs: true,
+      priority: 20,
+    });
+    registeredIds.add('clear-selection');
+  };
+
+  registerSearchCommands();
+
+  return {
+    handleSearch,
+    dispose() {
+      registeredIds.forEach(unregisterCommand);
+      registeredIds.clear();
+    }
+  };
 }
 
 function debounce(func, wait) {

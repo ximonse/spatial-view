@@ -8,6 +8,7 @@ import { detectDeviceMode, initApp } from './core/app.js';
 import { initToolbar, handleDriveSync, handleRestoreBackup, handleRestoreFromBlob } from './ui/toolbar.js';
 import { initSearchBar } from './ui/search-bar.js';
 import { initViewSwitcher } from './ui/view-switcher.js';
+import { setContextResolver } from './lib/command-registry.js';
 
 // App state
 const state = {
@@ -17,6 +18,8 @@ const state = {
   uiMode: localStorage.getItem('uiMode') || 'full', // 'full' | 'minimal' | 'toggle-only'
   cards: [],
 };
+
+setContextResolver(() => [state.currentView, 'global']);
 
 function initInfoOverlay() {
   const floatingHeader = document.getElementById('floating-header');
