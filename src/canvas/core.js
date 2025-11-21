@@ -39,6 +39,7 @@ import {
   arrangeGridHorizontal,
   arrangeGridTopAligned
 } from './arrangement.js';
+import { addRecentCardColor } from '../utils/recent-card-colors.js';
 import { registerCommand, unregisterCommand, executeCommandFromEvent, getCommands, formatKeyBindings } from '../lib/command-registry.js';
 
 // ============================================================================
@@ -1680,6 +1681,7 @@ async function showQuickColorPicker(x, y, cardIds) {
       for (const cardId of cardIds) {
         await updateCard(cardId, { cardColor: colorInfo.id });
       }
+      addRecentCardColor(colorInfo.id);
       await reloadCanvas();
       cleanup();
     });

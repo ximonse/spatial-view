@@ -1,3 +1,5 @@
+import { addRecentCardColor, loadRecentCardColors } from '../utils/recent-card-colors.js';
+
 let stateRef;
 
 export function initViewSwitcher(state) {
@@ -467,36 +469,10 @@ async function showColumnInlineEdit(card, cardElement) {
 
   const getColorMeta = (id) => colorOptions.find(c => c.id === id);
 
-  const loadRecentColors = () => {
-    try {
-      const stored = localStorage.getItem('recentCardColors');
-      if (!stored) return [];
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        return parsed.filter(c => typeof c === 'string');
-      }
-    } catch (e) {
-      console.warn('Kunde inte läsa senaste färger', e);
-    }
-    return [];
-  };
-
-  const saveRecentColors = (colors) => {
-    try {
-      localStorage.setItem('recentCardColors', JSON.stringify(colors.slice(0, 5)));
-    } catch (e) {
-      console.warn('Kunde inte spara senaste färger', e);
-    }
-  };
-
   const addRecentColor = (color) => {
     if (!color) return; // hoppa över "ingen färg"
-    const recents = loadRecentColors();
-    const filtered = recents.filter(c => c !== color);
-    filtered.unshift(color);
-    const trimmed = filtered.slice(0, 5);
-    saveRecentColors(trimmed);
-    renderRecentColors(trimmed);
+    const updated = addRecentCardColor(color);
+    renderRecentColors(updated);
   };
 
   const setSelectedColor = (colorId) => {
@@ -529,7 +505,7 @@ async function showColumnInlineEdit(card, cardElement) {
     });
   };
 
-  const renderRecentColors = (colors = loadRecentColors()) => {
+  const renderRecentColors = (colors = loadRecentCardColors()) => {
     if (!recentList) return;
     recentList.innerHTML = '';
     if (!colors.length) {
