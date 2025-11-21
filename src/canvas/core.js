@@ -2785,13 +2785,27 @@ async function handleVerticalArrangement(options = {}) {
     return;
   }
 
+  if (clipboard.length > 0) {
+    await pasteCardsWithArrangement(arrangeVertical, 'Vertical');
+    return;
+  }
+
   await applyArrangement(arrangeVertical, 'Vertical');
 }
 
 async function handleHorizontalArrangement(options = {}) {
   const useGrid = options.forceGrid || options.data?.heldChords?.has('g');
   if (useGrid) {
-    await applyArrangement(arrangeGridHorizontal, 'Grid Horizontal');
+    if (clipboard.length > 0) {
+      await pasteCardsWithArrangement(arrangeGridHorizontal, 'Grid Horizontal');
+    } else {
+      await applyArrangement(arrangeGridHorizontal, 'Grid Horizontal');
+    }
+    return;
+  }
+
+  if (clipboard.length > 0) {
+    await pasteCardsWithArrangement(arrangeHorizontal, 'Horizontal');
     return;
   }
 
@@ -2799,6 +2813,11 @@ async function handleHorizontalArrangement(options = {}) {
 }
 
 async function handleGridTopArrangement() {
+  if (clipboard.length > 0) {
+    await pasteCardsWithArrangement(arrangeGridTopAligned, 'Grid Top-Aligned');
+    return;
+  }
+
   await applyArrangement(arrangeGridTopAligned, 'Grid Top-Aligned');
 }
 
