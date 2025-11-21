@@ -72,41 +72,64 @@ const registeredCanvasCommands = new Set();
 // SECTION 2: RENDERING (Cards, Colors, Visual Elements)
 // ============================================================================
 
+const CARD_COLOR_MAP = {
+  // Zotero-färger (från highlight-systemet)
+  'card-color-1': '#ffd400', // Gul
+  'card-color-2': '#ff6666', // Röd
+  'card-color-3': '#5fb236', // Grön
+  'card-color-4': '#2ea8e5', // Blå
+  'card-color-5': '#a28ae5', // Lila
+  'card-color-6': '#e56eee', // Magenta
+  'card-color-7': '#f19837', // Orange
+  'card-color-8': '#aaaaaa', // Grå
+
+  // Format: color names (för bakåtkompatibilitet)
+  'yellow': '#ffd400',
+  'red': '#ff6666',
+  'green': '#5fb236',
+  'blue': '#2ea8e5',
+  'purple': '#a28ae5',
+  'magenta': '#e56eee',
+  'pink': '#e56eee',
+  'orange': '#f19837',
+  'gray': '#aaaaaa',
+  'grey': '#aaaaaa',
+  'white': '#ffffff'
+};
+
+function normalizeHexColor(value) {
+  if (!value || typeof value !== 'string') return null;
+
+  let hex = value.trim().toLowerCase();
+  if (!hex.startsWith('#')) return null;
+
+  if (/^#[0-9a-f]{3}$/.test(hex)) {
+    hex = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+  }
+
+  if (!/^#[0-9a-f]{6}$/.test(hex)) return null;
+
+  return hex;
+}
+
 /**
  * Get card color from cardColor property
  */
 function getCardColor(cardColor) {
   // If already a hex color, return it directly
   if (cardColor && cardColor.startsWith('#')) {
-    return cardColor;
+    return normalizeHexColor(cardColor) || '#ffffff';
   }
 
-  const colorMap = {
-    // Zotero-färger (från highlight-systemet)
-    'card-color-1': '#ffd400', // Gul
-    'card-color-2': '#ff6666', // Röd
-    'card-color-3': '#5fb236', // Grön
-    'card-color-4': '#2ea8e5', // Blå
-    'card-color-5': '#a28ae5', // Lila
-    'card-color-6': '#e56eee', // Magenta
-    'card-color-7': '#f19837', // Orange
-    'card-color-8': '#aaaaaa', // Grå
+  return CARD_COLOR_MAP[cardColor] || '#ffffff'; // Default white
+}
 
-    // Format: color names (för bakåtkompatibilitet)
-    'yellow': '#ffd400',
-    'red': '#ff6666',
-    'green': '#5fb236',
-    'blue': '#2ea8e5',
-    'purple': '#a28ae5',
-    'magenta': '#e56eee',
-    'pink': '#e56eee',
-    'orange': '#f19837',
-    'gray': '#aaaaaa',
-    'grey': '#aaaaaa',
-    'white': '#ffffff'
-  };
+function mapHexToCardColorKey(hex) {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized) return null;
 
-  return colorMap[cardColor] || '#ffffff'; // Default white
+  const matchingEntry = Object.entries(CARD_COLOR_MAP).find(([, value]) => normalizeHexColor(value) === normalized);
+  return matchingEntry ? matchingEntry[0] : null;
 }
 
 const RECENT_COLORS_KEY = 'recentCardColors';
@@ -141,11 +164,11 @@ function saveRecentColors() {
 function rememberColor(color) {
   if (!color || color === 'none' || color === '') return;
 
-  const hex = color.startsWith('#') ? color.toLowerCase() : getCardColor(color).toLowerCase();
+  const normalized = color.startsWith('#') ? normalizeHexColor(color) : normalizeHexColor(getCardColor(color));
 
-  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+  if (!normalized) return;
 
-  recentColors = [hex, ...recentColors.filter(c => c.toLowerCase() !== hex)].slice(0, 5);
+  recentColors = [normalized, ...recentColors.filter(c => normalizeHexColor(c) !== normalized)].slice(0, 5);
   saveRecentColors();
 }
 
@@ -1129,9 +1152,10 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
     };
 
     const setSelectedColor = (color, options = {}) => {
-      selectedColor = color;
+      const normalizedHex = color && color.startsWith('#') ? normalizeHexColor(color) : null;
+      selectedColor = normalizedHex || color;
 
-      if (color && color.startsWith('#')) {
+      if (normalizedHex) {
         highlightCustom();
       } else {
         clearCustomHighlight();
@@ -1155,9 +1179,13 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
     };
 
     const handleRecentSelect = (hex) => {
-      if (customColorInput) customColorInput.value = hex;
-      if (customColorHexInput) customColorHexInput.value = hex;
-      setSelectedColor(hex);
+      const paletteKey = mapHexToCardColorKey(hex);
+      const normalizedHex = normalizeHexColor(hex);
+      const valueToApply = paletteKey || normalizedHex;
+
+      if (customColorInput && normalizedHex) customColorInput.value = normalizedHex;
+      if (customColorHexInput && normalizedHex) customColorHexInput.value = normalizedHex;
+      setSelectedColor(valueToApply);
     };
 
     // Prefill custom color inputs based on current color (supports imported colors)
@@ -1176,18 +1204,17 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
     rememberColor(currentColor);
     renderRecentColorSuggestions(recentContainerId, handleRecentSelect);
 
-    const isValidHex = (value) => /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(value);
-
     const applyCustomColor = () => {
       const hexInput = (customColorHexInput ? customColorHexInput.value.trim() : '') || (customColorInput ? customColorInput.value.trim() : '');
-      if (!isValidHex(hexInput)) {
+      const normalizedHex = normalizeHexColor(hexInput);
+      if (!normalizedHex) {
         alert('Ange en giltig hexkod, t.ex. #ff8800');
         return;
       }
 
-      if (customColorInput) customColorInput.value = hexInput;
-      if (customColorHexInput) customColorHexInput.value = hexInput;
-      setSelectedColor(hexInput.toLowerCase());
+      if (customColorInput) customColorInput.value = normalizedHex;
+      if (customColorHexInput) customColorHexInput.value = normalizedHex;
+      setSelectedColor(normalizedHex);
     };
 
     if (applyCustomColorBtn) {
@@ -1494,9 +1521,10 @@ async function createBulkEditor(cardIds) {
   };
 
   const setBulkSelectedColor = (color, options = {}) => {
-    selectedColor = color;
+    const normalizedHex = color && color.startsWith('#') ? normalizeHexColor(color) : null;
+    selectedColor = normalizedHex || color;
 
-    if (color && color.startsWith('#')) {
+    if (normalizedHex) {
       highlightBulkCustom();
     } else {
       clearBulkCustomHighlight();
@@ -1520,23 +1548,26 @@ async function createBulkEditor(cardIds) {
   };
 
   const handleBulkRecentSelect = (hex) => {
-    if (bulkCustomColorInput) bulkCustomColorInput.value = hex;
-    if (bulkCustomColorHex) bulkCustomColorHex.value = hex;
-    setBulkSelectedColor(hex);
-  };
+    const paletteKey = mapHexToCardColorKey(hex);
+    const normalizedHex = normalizeHexColor(hex);
+    const valueToApply = paletteKey || normalizedHex;
 
-  const isValidHex = (value) => /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(value);
+    if (bulkCustomColorInput && normalizedHex) bulkCustomColorInput.value = normalizedHex;
+    if (bulkCustomColorHex && normalizedHex) bulkCustomColorHex.value = normalizedHex;
+    setBulkSelectedColor(valueToApply);
+  };
 
   const applyBulkCustomColor = () => {
     const hexInput = (bulkCustomColorHex ? bulkCustomColorHex.value.trim() : '') || (bulkCustomColorInput ? bulkCustomColorInput.value.trim() : '');
-    if (!isValidHex(hexInput)) {
+    const normalizedHex = normalizeHexColor(hexInput);
+    if (!normalizedHex) {
       alert('Ange en giltig hexkod, t.ex. #00cc99');
       return;
     }
 
-    if (bulkCustomColorInput) bulkCustomColorInput.value = hexInput;
-    if (bulkCustomColorHex) bulkCustomColorHex.value = hexInput;
-    setBulkSelectedColor(hexInput.toLowerCase());
+    if (bulkCustomColorInput) bulkCustomColorInput.value = normalizedHex;
+    if (bulkCustomColorHex) bulkCustomColorHex.value = normalizedHex;
+    setBulkSelectedColor(normalizedHex);
   };
 
   colorDots.forEach(dot => {
