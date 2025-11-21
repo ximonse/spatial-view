@@ -330,7 +330,7 @@ function renderCard(cardData) {
           background.stroke('#4a5568');
           background.strokeWidth(1);
         } else {
-          background.stroke('#e0e0e0');
+          background.stroke('#f19837');
           background.strokeWidth(1);
         }
       }
@@ -422,7 +422,7 @@ function renderCard(cardData) {
               background.stroke('#4a5568');
               background.strokeWidth(1);
             } else {
-              background.stroke('#e0e0e0');
+              background.stroke('#f19837');
               background.strokeWidth(1);
             }
           }
@@ -582,7 +582,7 @@ function renderTextCard(group, cardData) {
     width: 168,
     fontSize: 14,
     fontFamily: 'sans-serif',
-    fill: isDark ? '#e0e0e0' : '#1a1a1a',
+    fill: isDark ? '#f19837' : '#1a1a1a',
     wrap: 'word',
     ellipsis: false
   });
@@ -615,7 +615,7 @@ function renderTextCard(group, cardData) {
     width: 200,
     height: cardHeight,
     fill: fillColor,
-    stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#e0e0e0'),
+    stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#f19837'),
     strokeWidth: 1,
     cornerRadius: 4,
     shadowColor: isEink ? 'transparent' : 'black',
@@ -697,7 +697,7 @@ function renderImageCard(group, cardData) {
         width: width - 32,
         fontSize: 16,
         fontFamily: 'sans-serif',
-        fill: isDark ? '#e0e0e0' : '#1a1a1a',
+        fill: isDark ? '#f19837' : '#1a1a1a',
         wrap: 'word',
         align: 'left'
       });
@@ -745,7 +745,7 @@ function renderImageCard(group, cardData) {
         width: width,
         height: Math.max(height, totalHeight),
         fill: isEink ? '#ffffff' : (isDark ? '#2d3748' : '#fffacd'),
-        stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#e0e0e0'),
+        stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#f19837'),
         strokeWidth: 1,
         cornerRadius: 4,
         shadowColor: isEink ? 'transparent' : 'black',
@@ -788,7 +788,7 @@ function renderImageCard(group, cardData) {
         width: width,
         height: totalHeight,
         fill: '#ffffff',
-        stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#e0e0e0'),
+        stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#f19837'),
         strokeWidth: 1,
         cornerRadius: 4,
         shadowColor: isEink ? 'transparent' : 'black',
@@ -1008,21 +1008,21 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
                display: flex; align-items: center; justify-content: center; font-size: 20px;"
                title="Ingen färg">⭘</div>
           <div class="color-dot" data-color="card-color-1" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #d4f2d4; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
+               background: #ffd400; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
           <div class="color-dot" data-color="card-color-2" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #ffe4b3; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
+               background: #ff6666; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
           <div class="color-dot" data-color="card-color-3" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #ffc1cc; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
+               background: #5fb236; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
           <div class="color-dot" data-color="card-color-4" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #fff7b3; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
+               background: #2ea8e5; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
           <div class="color-dot" data-color="card-color-5" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #f3e5f5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
+               background: #a28ae5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
           <div class="color-dot" data-color="card-color-6" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #c7e7ff; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
+               background: #e56eee; border: 3px solid transparent; cursor: pointer;" title="Magenta"></div>
           <div class="color-dot" data-color="card-color-7" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
+               background: #f19837; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
           <div class="color-dot" data-color="card-color-8" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+               background: #aaaaaa; border: 3px solid #ddd; cursor: pointer;" title="Grå"></div>
         </div>
         <div id="customColorContainer" style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 14px;">Valfri färg:</span>
@@ -1385,21 +1385,21 @@ async function createBulkEditor(cardIds) {
                display: flex; align-items: center; justify-content: center; font-size: 20px;"
                title="Ingen färg">⭘</div>
           <div class="color-dot" data-color="card-color-1" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #d4f2d4; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
+               background: #ffd400; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
           <div class="color-dot" data-color="card-color-2" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #ffe4b3; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
+               background: #ff6666; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
           <div class="color-dot" data-color="card-color-3" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #ffc1cc; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
+               background: #5fb236; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
           <div class="color-dot" data-color="card-color-4" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #fff7b3; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
+               background: #2ea8e5; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
           <div class="color-dot" data-color="card-color-5" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #f3e5f5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
+               background: #a28ae5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
           <div class="color-dot" data-color="card-color-6" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #c7e7ff; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
+               background: #e56eee; border: 3px solid transparent; cursor: pointer;" title="Magenta"></div>
           <div class="color-dot" data-color="card-color-7" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
+               background: #f19837; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
           <div class="color-dot" data-color="card-color-8" style="width: 36px; height: 36px; border-radius: 50%;
-               background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+               background: #aaaaaa; border: 3px solid #ddd; cursor: pointer;" title="Grå"></div>
         </div>
         <div id="bulkCustomColorContainer" style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 14px;">Valfri färg:</span>
@@ -1831,14 +1831,14 @@ async function showQuickColorPicker(x, y, cardIds) {
 
   const colors = [
     { id: '', label: '⭘', title: 'Ingen färg' },
-    { id: 'card-color-1', color: '#d4f2d4', title: 'Grön' },
-    { id: 'card-color-2', color: '#ffe4b3', title: 'Orange' },
-    { id: 'card-color-3', color: '#ffc1cc', title: 'Röd' },
-    { id: 'card-color-4', color: '#fff7b3', title: 'Gul' },
-    { id: 'card-color-5', color: '#f3e5f5', title: 'Lila' },
-    { id: 'card-color-6', color: '#c7e7ff', title: 'Blå' },
-    { id: 'card-color-7', color: '#e0e0e0', title: 'Grå' },
-    { id: 'card-color-8', color: '#ffffff', title: 'Vit' }
+    { id: 'card-color-1', color: '#ffd400', title: 'Gul' },
+    { id: 'card-color-2', color: '#ff6666', title: 'Röd' },
+    { id: 'card-color-3', color: '#5fb236', title: 'Grön' },
+    { id: 'card-color-4', color: '#2ea8e5', title: 'Blå' },
+    { id: 'card-color-5', color: '#a28ae5', title: 'Lila' },
+    { id: 'card-color-6', color: '#e56eee', title: 'Magenta' },
+    { id: 'card-color-7', color: '#f19837', title: 'Orange' },
+    { id: 'card-color-8', color: '#aaaaaa', title: 'Grå' }
   ];
 
   colors.forEach(colorInfo => {
@@ -2151,7 +2151,7 @@ export async function updateCardFills() {
     }
 
     if (text) {
-      text.fill(isDark ? '#e0e0e0' : '#1a1a1a');
+      text.fill(isDark ? '#f19837' : '#1a1a1a');
     }
   });
 
@@ -2191,7 +2191,7 @@ export function updateCardStrokes() {
                     background.stroke('#4a5568');
                     background.strokeWidth(1);
                 } else {
-                    background.stroke('#e0e0e0');
+                    background.stroke('#f19837');
                     background.strokeWidth(1);
                 }
             }
@@ -2500,7 +2500,7 @@ function updateSelection() {
           background.stroke('#4a5568');
           background.strokeWidth(1);
         } else {
-          background.stroke('#e0e0e0');
+          background.stroke('#f19837');
           background.strokeWidth(1);
         }
       }
@@ -3769,13 +3769,13 @@ async function performExport(format) {
 
 function generateHTML(cards) {
   const colorMap = {
-    'card-color-1': '#d4f2d4',
-    'card-color-2': '#ffe4b3',
-    'card-color-3': '#ffc1cc',
-    'card-color-4': '#fff7b3',
-    'card-color-5': '#f3e5f5',
-    'card-color-6': '#c7e7ff',
-    'card-color-7': '#e0e0e0',
+    'card-color-1': '#ffd400',
+    'card-color-2': '#ff6666',
+    'card-color-3': '#5fb236',
+    'card-color-4': '#2ea8e5',
+    'card-color-5': '#a28ae5',
+    'card-color-6': '#e56eee',
+    'card-color-7': '#f19837',
     'card-color-8': '#ffffff'
   };
 
@@ -3819,7 +3819,7 @@ function generateHTML(cards) {
       margin-bottom: 20px;
       padding: 20px;
       border-radius: 8px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid #f19837;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .card-type {
@@ -7499,7 +7499,7 @@ function showCommandPalette() {
       style="
         width: 100%;
         padding: 12px 16px;
-        border: 2px solid #e0e0e0;
+        border: 2px solid #f19837;
         border-radius: 8px;
         font-size: 16px;
         margin-bottom: 16px;
@@ -7576,7 +7576,7 @@ function showCommandPalette() {
     searchInput.style.borderColor = '#2196F3';
   });
   searchInput.addEventListener('blur', () => {
-    searchInput.style.borderColor = '#e0e0e0';
+    searchInput.style.borderColor = '#f19837';
   });
 
   handleKeyboard = async (e) => {
@@ -8100,7 +8100,7 @@ export async function searchCards(query) {
       const background = group.findOne('Rect');
       if (!group.hasName('selected')) {
         if (background) {
-          background.stroke('#e0e0e0');
+          background.stroke('#f19837');
           background.strokeWidth(1);
         }
       }
@@ -8155,7 +8155,7 @@ export async function searchCards(query) {
       group.opacity(0.3);
       group.removeName('selected');
       if (background) {
-        background.stroke('#e0e0e0');
+        background.stroke('#f19837');
         background.strokeWidth(1);
       }
     }
@@ -8944,7 +8944,7 @@ function showTextInputDialog(title, defaultValue = '') {
       width: 100%;
       min-height: 100px;
       padding: 12px;
-      border: 2px solid #e0e0e0;
+      border: 2px solid #f19837;
       border-radius: 8px;
       font-size: 16px;
       font-family: sans-serif;
@@ -8956,7 +8956,7 @@ function showTextInputDialog(title, defaultValue = '') {
       input.style.borderColor = '#2196F3';
     });
     input.addEventListener('blur', () => {
-      input.style.borderColor = '#e0e0e0';
+      input.style.borderColor = '#f19837';
     });
 
     // Buttons container
@@ -8981,7 +8981,7 @@ function showTextInputDialog(title, defaultValue = '') {
       transition: background 0.2s;
     `;
     cancelBtn.addEventListener('mouseenter', () => {
-      cancelBtn.style.background = '#e0e0e0';
+      cancelBtn.style.background = '#f19837';
     });
     cancelBtn.addEventListener('mouseleave', () => {
       cancelBtn.style.background = '#f5f5f5';
@@ -9076,7 +9076,7 @@ export function deselectAllCards() {
         background.stroke('#4a5568');
         background.strokeWidth(1);
       } else {
-        background.stroke('#e0e0e0');
+        background.stroke('#f19837');
         background.strokeWidth(1);
       }
     }
