@@ -1,4 +1,5 @@
 // Google Drive Sync for Spatial View
+import { getCardImageSrc } from '../utils/card-images.js';
 
 const DRIVE_FOLDER_NAME = 'Spatial View Backups';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
@@ -649,10 +650,12 @@ export async function syncWithDrive() {
     const imagesFolder = zip.folder('images');
     for (const card of cards) {
       if (card.image) {
-        const imageSrc = typeof card.image === 'string' ? card.image : card.image.base64;
-        const base64Data = imageSrc.split(',')[1];
+        const imageSrc = getCardImageSrc(card.image);
+        const base64Data = imageSrc?.split(',')[1];
         if (base64Data) {
           imagesFolder.file(`card_${card.id}.png`, base64Data, { base64: true });
+        } else {
+          console.warn('Drive sync: skipped image with unsupported format', card.image);
         }
       }
     }

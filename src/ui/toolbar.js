@@ -1,5 +1,6 @@
 import { importImage } from '../lib/canvas.js';
 import { toggleView } from './view-switcher.js';
+import { getCardImageSrc } from '../utils/card-images.js';
 
 export function initToolbar(state) {
   const viewToggle = document.getElementById('btn-view-toggle');
@@ -208,17 +209,18 @@ export async function handleDownloadBackup() {
     for (const card of cards) {
       if (card.image) {
         try {
-          // Handle both direct base64 string and object format
-          const imageSrc = typeof card.image === 'string' ? card.image : card.image.base64;
+          const imageSrc = getCardImageSrc(card.image);
 
           // Extract base64 data (remove data:image/png;base64, prefix)
-          const base64Data = imageSrc.split(',')[1];
+          const base64Data = imageSrc?.split(',')[1];
 
           if (base64Data) {
             // Use card ID as filename
             const filename = `card_${card.id}.png`;
             imagesFolder.file(filename, base64Data, { base64: true });
             imageCount++;
+          } else {
+            console.warn(`Skipping export for card ${card.id}: unsupported image payload`, card.image);
           }
         } catch (error) {
           console.error(`Failed to export image for card ${card.id}:`, error);

@@ -1,5 +1,6 @@
 import { addRecentCardColor, loadRecentCardColors } from '../utils/recent-card-colors.js';
 import { getColorOptionsForTheme, useColoredCards } from '../utils/card-colors.js';
+import { getCardImageSrc } from '../utils/card-images.js';
 
 let stateRef;
 
@@ -127,55 +128,10 @@ export async function renderColumnView(searchQuery = '') {
       `;
     }
 
-    if (card.image) {
-      // Image card
-      const img = document.createElement('img');
-      // Handle both direct base64 string and object format
-      const imageSrc = typeof card.image === 'string' ? card.image : card.image.base64;
-      img.src = imageSrc;
-      img.style.cssText = `
-        width: 100%;
-        max-width: 100%;
-        height: auto;
-        border-radius: 4px;
-        margin-bottom: 12px;
-        display: block;
-      `;
-
-      // Error handling for images
-      img.onerror = () => {
-        console.error('Failed to load image for card:', card.id);
-        img.style.display = 'none';
-        const errorText = document.createElement('div');
-        errorText.textContent = '⚠️ Bild kunde inte laddas';
-        errorText.style.cssText = `
-          padding: 20px;
-          background: #fff3cd;
-          border-radius: 4px;
-          color: #856404;
-          text-align: center;
-          margin-bottom: 12px;
-        `;
-        cardElement.insertBefore(errorText, cardElement.firstChild);
-      };
-
-      cardElement.appendChild(img);
-
-      if (card.text || card.backText) {
-        const text = document.createElement('div');
-        text.textContent = card.backText || card.text || '';
-        text.style.cssText = `
-          font-size: 14px;
-          color: ${isDark ? '#e0e0e0' : '#666'};
-          line-height: 1.5;
-          white-space: pre-wrap;
-        `;
-        cardElement.appendChild(text);
-      }
-    } else {
-      // Text card
+    const appendTextContent = () => {
       const text = document.createElement('div');
-      text.textContent = card.text || 'Tomt kort';
+      const primaryText = card.text || card.backText || 'Tomt kort';
+      text.textContent = primaryText;
       text.style.cssText = `
         font-size: 16px;
         color: ${isDark ? '#e0e0e0' : '#1a1a1a'};
@@ -183,6 +139,60 @@ export async function renderColumnView(searchQuery = '') {
         white-space: pre-wrap;
       `;
       cardElement.appendChild(text);
+    };
+
+    if (card.image) {
+      // Image card
+      const imageSrc = getCardImageSrc(card.image);
+
+      if (imageSrc) {
+        const img = document.createElement('img');
+        img.src = imageSrc;
+        img.style.cssText = `
+          width: 100%;
+          max-width: 100%;
+          height: auto;
+          border-radius: 4px;
+          margin-bottom: 12px;
+          display: block;
+        `;
+
+        // Error handling for images
+        img.onerror = () => {
+          console.error('Failed to load image for card:', card.id);
+          img.style.display = 'none';
+          const errorText = document.createElement('div');
+          errorText.textContent = '⚠️ Bild kunde inte laddas';
+          errorText.style.cssText = `
+            padding: 20px;
+            background: #fff3cd;
+            border-radius: 4px;
+            color: #856404;
+            text-align: center;
+            margin-bottom: 12px;
+          `;
+          cardElement.insertBefore(errorText, cardElement.firstChild);
+        };
+
+        cardElement.appendChild(img);
+
+        if (card.text || card.backText) {
+          const text = document.createElement('div');
+          text.textContent = card.backText || card.text || '';
+          text.style.cssText = `
+            font-size: 14px;
+            color: ${isDark ? '#e0e0e0' : '#666'};
+            line-height: 1.5;
+            white-space: pre-wrap;
+          `;
+          cardElement.appendChild(text);
+        }
+      } else {
+        console.warn('renderColumnView: unsupported image payload, rendering as text card', card.image);
+        appendTextContent();
+      }
+    } else {
+      appendTextContent();
     }
 
     // Hover effect
@@ -335,12 +345,14 @@ async function showColumnInlineEdit(card, cardElement) {
   // If image card, show image first
   let imageHTML = '';
   if (isImageCard) {
-    const imageSrc = typeof card.image === 'string' ? card.image : card.image.base64;
-    imageHTML = `
-      <div style="margin-bottom: 16px;">
-        <img src="${imageSrc}" style="width: 100%; border-radius: 8px;" alt="Card image" />
-      </div>
-    `;
+    const imageSrc = getCardImageSrc(card.image);
+    if (imageSrc) {
+      imageHTML = `
+        <div style="margin-bottom: 16px;">
+          <img src="${imageSrc}" style="width: 100%; border-radius: 8px;" alt="Card image" />
+        </div>
+      `;
+    }
   }
 
   const showColoredSwatches = useColoredCards();
@@ -713,14 +725,18 @@ async function showColumnEditDialog_OLD(card, cardElement) {
   if (card.image) {
     const img = document.createElement('img');
     // Handle both direct base64 string and object format
-    const imageSrc = typeof card.image === 'string' ? card.image : card.image.base64;
-    img.src = imageSrc;
-    img.style.cssText = `
-      width: 100%;
-      border-radius: 8px;
-      margin-bottom: 16px;
-    `;
-    dialog.appendChild(img);
+    const imageSrc = getCardImageSrc(card.image);
+    if (imageSrc) {
+      img.src = imageSrc;
+      img.style.cssText = `
+        width: 100%;
+        border-radius: 8px;
+        margin-bottom: 16px;
+      `;
+      dialog.appendChild(img);
+    } else {
+      console.warn('Edit dialog: missing valid image source for card', card.id);
+    }
   }
 
   // Text area

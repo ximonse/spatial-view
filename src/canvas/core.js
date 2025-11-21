@@ -28,6 +28,7 @@ import Konva from 'konva';
 import { marked } from 'marked';
 import { getAllCards, updateCard, createCard, deleteCard, getCard } from './storage.js';
 import { processImage } from '../utils/image-processing.js';
+import { getCardImageSrc, normalizeCardImage } from '../utils/card-images.js';
 import { readImageWithGemini, executeGeminiAgent, getGoogleAIAPIKey, executeChatGPTAgent } from './gemini.js';
 import { getUpcomingCalendarEvents, getTodayCalendarEvents, getThisWeekCalendarEvents, formatEventsForAI } from './calendar-sync.js';
 import {
@@ -211,10 +212,15 @@ function renderCard(cardData) {
     draggable: true
   });
 
-  if (cardData.image) {
+  const normalizedImage = normalizeCardImage(cardData.image);
+
+  if (normalizedImage?.src) {
     // Image card
-    renderImageCard(group, cardData);
+    renderImageCard(group, { ...cardData, image: normalizedImage });
   } else {
+    if (cardData.image) {
+      console.warn('renderCard: unexpected image format, falling back to text card', cardData.image);
+    }
     // Text card
     renderTextCard(group, cardData);
   }
@@ -540,14 +546,20 @@ function renderTextCard(group, cardData) {
  */
 function renderImageCard(group, cardData) {
   const imageObj = new Image();
-  const imageData = cardData.image; // This is the object { base64, width, height, quality }
+  const imageData = normalizeCardImage(cardData.image);
   const isFlipped = cardData.flipped || false;
+
+  if (!imageData?.src) {
+    console.warn('renderImageCard: missing usable image source, rendering as text card instead');
+    renderTextCard(group, cardData);
+    return;
+  }
 
   console.log('DEBUG: renderImageCard - cardData.image:', imageData);
 
   imageObj.onload = function() {
     console.log('DEBUG: renderImageCard - imageObj loaded. naturalWidth:', imageObj.naturalWidth, 'naturalHeight:', imageObj.naturalHeight);
-    console.log('DEBUG: renderImageCard - imageData.base64 (truncated):', imageData.base64 ? imageData.base64.substring(0, 100) + '...' : 'N/A');
+    console.log('DEBUG: renderImageCard - image src (truncated):', imageData.src ? imageData.src.substring(0, 100) + '...' : 'N/A');
 
     // Check themes
     const isEink = document.body.classList.contains('eink-theme');
@@ -770,10 +782,10 @@ function renderImageCard(group, cardData) {
   };
 
   imageObj.onerror = function() {
-      console.error('ERROR: renderImageCard - Failed to load image from base64. imageData:', imageData);
+      console.error('ERROR: renderImageCard - Failed to load image from source. imageData:', imageData);
   };
 
-  imageObj.src = imageData.base64;
+  imageObj.src = imageData.src;
 }
 
 // ============================================================================
@@ -871,7 +883,7 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
 
     ${card.image ? `
     <div style="margin-bottom: 20px; text-align: center;">
-      <img src="${card.image.base64}"
+      <img src="${getCardImageSrc(card.image) || ''}"
            style="max-width: 100%; max-height: 300px; border-radius: 8px;
                   box-shadow: 0 2px 8px rgba(0,0,0,0.15);"
            alt="Kortbild">
