@@ -853,6 +853,17 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   `;
 
+  const showColoredSwatches = useColoredCards();
+  const paletteOptions = getColorOptionsForTheme({ colored: showColoredSwatches });
+
+  const colorDotsHTML = paletteOptions.map(option => {
+    const border = option.id === 'card-color-8' ? '3px solid #ddd' : '3px solid transparent';
+    const swatch = option.swatch || 'var(--bg-secondary)';
+    return `
+        <div class="color-dot" data-color="${option.id}" style="width: 36px; height: 36px; border-radius: 50%;
+             background: ${swatch}; border: ${border}; cursor: pointer;" title="${option.label}"></div>`;
+  }).join('\n');
+
   dialog.innerHTML = `
     <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 20px; font-weight: 600;">
       ${isImageBack ? 'Redigera baksida' : 'Redigera kort'}
@@ -904,22 +915,7 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
              background: var(--bg-secondary); border: 3px solid var(--border-color); cursor: pointer;
              display: flex; align-items: center; justify-content: center; font-size: 20px;"
              title="Ingen färg">⭘</div>
-        <div class="color-dot" data-color="card-color-1" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #d4f2d4; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
-        <div class="color-dot" data-color="card-color-2" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #ffe4b3; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
-        <div class="color-dot" data-color="card-color-3" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #ffc1cc; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
-        <div class="color-dot" data-color="card-color-4" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #fff7b3; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
-        <div class="color-dot" data-color="card-color-5" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #f3e5f5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
-        <div class="color-dot" data-color="card-color-6" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #c7e7ff; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
-        <div class="color-dot" data-color="card-color-7" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
-        <div class="color-dot" data-color="card-color-8" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+        ${colorDotsHTML}
       </div>
       <div id="customColorContainer" style="display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 14px;">Valfri färg:</span>
