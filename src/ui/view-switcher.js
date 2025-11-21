@@ -363,29 +363,45 @@ async function showColumnInlineEdit(card, cardElement) {
                box-sizing: border-box;">
     </div>
 
-    <div style="margin-bottom: 16px;">
+    <div style="margin-bottom: 16px; position: relative;">
       <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px;">Kortfärg:</label>
-      <div id="column-color-picker" style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <div class="color-dot" data-color="" style="width: 32px; height: 32px; border-radius: 50%;
-             background: var(--bg-primary); border: 3px solid var(--border-color); cursor: pointer;
-             display: flex; align-items: center; justify-content: center; font-size: 18px;"
-             title="Ingen färg">⭘</div>
-        <div class="color-dot" data-color="card-color-1" style="width: 32px; height: 32px; border-radius: 50%;
-             background: #d4f2d4; border: 3px solid ${currentColor === 'card-color-1' ? '#2196F3' : 'transparent'}; cursor: pointer;" title="Grön"></div>
-        <div class="color-dot" data-color="card-color-2" style="width: 32px; height: 32px; border-radius: 50%;
-             background: #ffe4b3; border: 3px solid ${currentColor === 'card-color-2' ? '#2196F3' : 'transparent'}; cursor: pointer;" title="Orange"></div>
-        <div class="color-dot" data-color="card-color-3" style="width: 32px; height: 32px; border-radius: 50%;
-             background: #ffc1cc; border: 3px solid ${currentColor === 'card-color-3' ? '#2196F3' : 'transparent'}; cursor: pointer;" title="Röd"></div>
-        <div class="color-dot" data-color="card-color-4" style="width: 32px; height: 32px; border-radius: 50%;
-             background: #fff7b3; border: 3px solid ${currentColor === 'card-color-4' ? '#2196F3' : 'transparent'}; cursor: pointer;" title="Gul"></div>
-        <div class="color-dot" data-color="card-color-5" style="width: 32px; height: 32px; border-radius: 50%;
-             background: #f3e5f5; border: 3px solid ${currentColor === 'card-color-5' ? '#2196F3' : 'transparent'}; cursor: pointer;" title="Lila"></div>
-        <div class="color-dot" data-color="card-color-6" style="width: 32px; height: 32px; border-radius: 50%;
-             background: #c7e7ff; border: 3px solid ${currentColor === 'card-color-6' ? '#2196F3' : 'transparent'}; cursor: pointer;" title="Blå"></div>
-        <div class="color-dot" data-color="card-color-7" style="width: 32px; height: 32px; border-radius: 50%;
-             background: #e0e0e0; border: 3px solid ${currentColor === 'card-color-7' ? '#2196F3' : 'transparent'}; cursor: pointer;" title="Grå"></div>
-        <div class="color-dot" data-color="card-color-8" style="width: 32px; height: 32px; border-radius: 50%;
-             background: #ffffff; border: 3px solid ${currentColor === 'card-color-8' ? '#2196F3' : '#ddd'}; cursor: pointer;" title="Vit"></div>
+      <button id="column-color-toggle" style="display: inline-flex; align-items: center; gap: 8px; width: 100%;
+        padding: 10px 12px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--bg-primary);
+        color: var(--text-primary); cursor: pointer;">
+        <span id="column-color-preview" style="display: inline-block; width: 20px; height: 20px; border-radius: 50%;
+          border: 2px solid var(--border-color);"></span>
+        <span id="column-color-label" style="flex: 1; text-align: left; font-weight: 500;">Välj färg</span>
+        <span style="font-size: 14px; opacity: 0.7;">▾</span>
+      </button>
+      <div id="column-color-dropdown" style="display: none; position: absolute; top: 72px; left: 0; right: 0;
+        background: var(--bg-primary); border: 2px solid var(--border-color); border-radius: 8px; padding: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 20;">
+        <div id="column-color-picker" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 8px;">
+          <div class="color-dot" data-color="" style="width: 32px; height: 32px; border-radius: 50%;
+               background: var(--bg-primary); border: 3px solid var(--border-color); cursor: pointer;
+               display: flex; align-items: center; justify-content: center; font-size: 18px;"
+               title="Ingen färg">⭘</div>
+          <div class="color-dot" data-color="card-color-1" style="width: 32px; height: 32px; border-radius: 50%;
+               background: #d4f2d4; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
+          <div class="color-dot" data-color="card-color-2" style="width: 32px; height: 32px; border-radius: 50%;
+               background: #ffe4b3; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
+          <div class="color-dot" data-color="card-color-3" style="width: 32px; height: 32px; border-radius: 50%;
+               background: #ffc1cc; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
+          <div class="color-dot" data-color="card-color-4" style="width: 32px; height: 32px; border-radius: 50%;
+               background: #fff7b3; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
+          <div class="color-dot" data-color="card-color-5" style="width: 32px; height: 32px; border-radius: 50%;
+               background: #f3e5f5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
+          <div class="color-dot" data-color="card-color-6" style="width: 32px; height: 32px; border-radius: 50%;
+               background: #c7e7ff; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
+          <div class="color-dot" data-color="card-color-7" style="width: 32px; height: 32px; border-radius: 50%;
+               background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
+          <div class="color-dot" data-color="card-color-8" style="width: 32px; height: 32px; border-radius: 50%;
+               background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+        </div>
+        <div id="column-recent-colors" style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+          <div style="font-size: 13px; margin-bottom: 8px; font-weight: 600;">Senaste färger</div>
+          <div id="column-recent-list" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+        </div>
       </div>
     </div>
     ` : ''}
@@ -422,6 +438,11 @@ async function showColumnInlineEdit(card, cardElement) {
   const cancelBtn = editorContainer.querySelector('#column-cancel-edit');
   const deleteBtn = editorContainer.querySelector('#column-delete-card');
   const colorPicker = editorContainer.querySelector('#column-color-picker');
+  const colorDropdown = editorContainer.querySelector('#column-color-dropdown');
+  const colorToggle = editorContainer.querySelector('#column-color-toggle');
+  const colorPreview = editorContainer.querySelector('#column-color-preview');
+  const colorLabel = editorContainer.querySelector('#column-color-label');
+  const recentList = editorContainer.querySelector('#column-recent-list');
 
   // Focus textarea
   textarea.focus();
@@ -430,25 +451,153 @@ async function showColumnInlineEdit(card, cardElement) {
   // Track selected color
   let selectedColor = currentColor;
 
-  // Color picker logic
-  if (colorPicker) {
+  // Color picker logic with dropdown + recents
+  let outsideClickHandler = null;
+  const colorOptions = [
+    { id: '', label: 'Ingen färg', swatch: 'var(--bg-primary)', border: '3px solid var(--border-color)' },
+    { id: 'card-color-1', label: 'Grön', swatch: '#d4f2d4' },
+    { id: 'card-color-2', label: 'Orange', swatch: '#ffe4b3' },
+    { id: 'card-color-3', label: 'Röd', swatch: '#ffc1cc' },
+    { id: 'card-color-4', label: 'Gul', swatch: '#fff7b3' },
+    { id: 'card-color-5', label: 'Lila', swatch: '#f3e5f5' },
+    { id: 'card-color-6', label: 'Blå', swatch: '#c7e7ff' },
+    { id: 'card-color-7', label: 'Grå', swatch: '#e0e0e0' },
+    { id: 'card-color-8', label: 'Vit', swatch: '#ffffff', border: '3px solid #ddd' }
+  ];
+
+  const getColorMeta = (id) => colorOptions.find(c => c.id === id);
+
+  const loadRecentColors = () => {
+    try {
+      const stored = localStorage.getItem('recentCardColors');
+      if (!stored) return [];
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(c => typeof c === 'string');
+      }
+    } catch (e) {
+      console.warn('Kunde inte läsa senaste färger', e);
+    }
+    return [];
+  };
+
+  const saveRecentColors = (colors) => {
+    try {
+      localStorage.setItem('recentCardColors', JSON.stringify(colors.slice(0, 5)));
+    } catch (e) {
+      console.warn('Kunde inte spara senaste färger', e);
+    }
+  };
+
+  const addRecentColor = (color) => {
+    if (!color) return; // hoppa över "ingen färg"
+    const recents = loadRecentColors();
+    const filtered = recents.filter(c => c !== color);
+    filtered.unshift(color);
+    const trimmed = filtered.slice(0, 5);
+    saveRecentColors(trimmed);
+    renderRecentColors(trimmed);
+  };
+
+  const setSelectedColor = (colorId) => {
+    selectedColor = colorId;
+    const meta = getColorMeta(colorId) || { label: 'Välj färg', swatch: 'transparent', border: '2px solid var(--border-color)' };
+    if (colorPreview) {
+      colorPreview.style.background = meta.swatch;
+      colorPreview.style.border = meta.border || '2px solid var(--border-color)';
+    }
+    if (colorLabel) {
+      colorLabel.textContent = meta.label;
+    }
+
+    const colorDots = colorPicker ? colorPicker.querySelectorAll('.color-dot') : [];
+    colorDots.forEach(d => {
+      if (d.dataset.color === colorId) {
+        d.style.border = '3px solid #2196F3';
+      } else if (d.dataset.color === 'card-color-8') {
+        d.style.border = '3px solid #ddd';
+      } else if (d.dataset.color === '') {
+        d.style.border = '3px solid var(--border-color)';
+      } else {
+        d.style.border = '3px solid transparent';
+      }
+    });
+
+    const recentDots = recentList ? recentList.querySelectorAll('.recent-color') : [];
+    recentDots.forEach(d => {
+      d.style.outline = d.dataset.color === colorId ? '3px solid #2196F3' : '2px solid var(--border-color)';
+    });
+  };
+
+  const renderRecentColors = (colors = loadRecentColors()) => {
+    if (!recentList) return;
+    recentList.innerHTML = '';
+    if (!colors.length) {
+      const empty = document.createElement('div');
+      empty.textContent = 'Ingen historik ännu';
+      empty.style.fontSize = '12px';
+      empty.style.opacity = '0.8';
+      recentList.appendChild(empty);
+      return;
+    }
+
+    colors.slice(0, 5).forEach(colorId => {
+      const meta = getColorMeta(colorId);
+      const dot = document.createElement('div');
+      dot.className = 'recent-color';
+      dot.dataset.color = colorId;
+      dot.title = meta?.label || colorId;
+      dot.style.cssText = `width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid var(--border-color); background: ${meta?.swatch || colorId};`;
+      dot.addEventListener('click', () => {
+        setSelectedColor(colorId);
+        addRecentColor(colorId);
+        colorDropdown.style.display = 'none';
+      });
+      recentList.appendChild(dot);
+    });
+    setSelectedColor(selectedColor);
+  };
+
+  const toggleDropdown = () => {
+    if (!colorDropdown) return;
+    const isOpen = colorDropdown.style.display === 'block';
+    colorDropdown.style.display = isOpen ? 'none' : 'block';
+  };
+
+  if (colorPicker && colorDropdown && colorToggle) {
     const colorDots = colorPicker.querySelectorAll('.color-dot');
     colorDots.forEach(dot => {
       dot.addEventListener('click', () => {
         const color = dot.dataset.color;
-        selectedColor = color;
-
-        // Update borders
-        colorDots.forEach(d => {
-          if (d.dataset.color === color) {
-            d.style.border = '3px solid #2196F3';
-          } else {
-            d.style.border = d.dataset.color === 'card-color-8' ? '3px solid #ddd' : '3px solid transparent';
-          }
-        });
+        setSelectedColor(color);
+        addRecentColor(color);
+        colorDropdown.style.display = 'none';
       });
     });
+
+    colorToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleDropdown();
+    });
+
+    outsideClickHandler = (e) => {
+      if (!colorDropdown.contains(e.target) && !colorToggle.contains(e.target)) {
+        colorDropdown.style.display = 'none';
+      }
+    };
+
+    document.addEventListener('click', outsideClickHandler);
+
+    renderRecentColors();
+    setSelectedColor(selectedColor || '');
   }
+
+  const cleanupColorPicker = () => {
+    if (outsideClickHandler) {
+      document.removeEventListener('click', outsideClickHandler);
+      outsideClickHandler = null;
+    }
+  };
 
   // Save function
   const saveEdit = async () => {
@@ -473,12 +622,14 @@ async function showColumnInlineEdit(card, cardElement) {
     }
 
     await updateCard(card.id, updates);
+    cleanupColorPicker();
     editorContainer.remove();
     await renderColumnView(); // Refresh view
   };
 
   // Cancel function
   const cancelEdit = () => {
+    cleanupColorPicker();
     editorContainer.remove();
   };
 
@@ -487,6 +638,7 @@ async function showColumnInlineEdit(card, cardElement) {
     if (confirm('Är du säker på att du vill ta bort detta kort?')) {
       const { deleteCard } = await import('../lib/storage.js');
       await deleteCard(card.id);
+      cleanupColorPicker();
       await renderColumnView();
     }
   };
