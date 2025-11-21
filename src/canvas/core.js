@@ -109,6 +109,78 @@ function getCardColor(cardColor) {
   return colorMap[cardColor] || '#ffffff'; // Default white
 }
 
+const RECENT_COLORS_KEY = 'recentCardColors';
+let recentColors = [];
+
+function loadRecentColors() {
+  if (typeof localStorage === 'undefined') return;
+
+  try {
+    const stored = localStorage.getItem(RECENT_COLORS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        recentColors = parsed.filter(c => /^#[0-9a-fA-F]{6}$/.test(c));
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load recent colors', error);
+  }
+}
+
+function saveRecentColors() {
+  if (typeof localStorage === 'undefined') return;
+
+  try {
+    localStorage.setItem(RECENT_COLORS_KEY, JSON.stringify(recentColors.slice(0, 5)));
+  } catch (error) {
+    console.warn('Failed to save recent colors', error);
+  }
+}
+
+function rememberColor(color) {
+  if (!color || color === 'none' || color === '') return;
+
+  const hex = color.startsWith('#') ? color.toLowerCase() : getCardColor(color).toLowerCase();
+
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+
+  recentColors = [hex, ...recentColors.filter(c => c.toLowerCase() !== hex)].slice(0, 5);
+  saveRecentColors();
+}
+
+function renderRecentColorSuggestions(containerId, onSelect) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (!recentColors.length) {
+    const empty = document.createElement('div');
+    empty.textContent = 'Inga färger använda än';
+    empty.style.fontSize = '12px';
+    empty.style.color = 'var(--text-secondary)';
+    container.appendChild(empty);
+    return;
+  }
+
+  recentColors.forEach(color => {
+    const dot = document.createElement('div');
+    dot.className = 'recent-color-dot';
+    dot.style.width = '28px';
+    dot.style.height = '28px';
+    dot.style.borderRadius = '50%';
+    dot.style.border = '3px solid var(--border-color)';
+    dot.style.background = color;
+    dot.style.cursor = 'pointer';
+    dot.title = color;
+    dot.addEventListener('click', () => onSelect(color));
+    container.appendChild(dot);
+  });
+}
+
+loadRecentColors();
+
 /**
  * Get color from text based on subject keywords
  * Matches both abbreviations and full names
@@ -924,27 +996,44 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
 
     <div style="margin-bottom: 20px;">
       <label style="display: block; margin-bottom: 8px; font-weight: 500;">Kortfärg:</label>
-      <div id="editColorPicker" style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <div class="color-dot" data-color="" style="width: 36px; height: 36px; border-radius: 50%;
-             background: var(--bg-secondary); border: 3px solid var(--border-color); cursor: pointer;
-             display: flex; align-items: center; justify-content: center; font-size: 20px;"
-             title="Ingen färg">⭘</div>
-        <div class="color-dot" data-color="card-color-1" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #d4f2d4; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
-        <div class="color-dot" data-color="card-color-2" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #ffe4b3; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
-        <div class="color-dot" data-color="card-color-3" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #ffc1cc; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
-        <div class="color-dot" data-color="card-color-4" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #fff7b3; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
-        <div class="color-dot" data-color="card-color-5" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #f3e5f5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
-        <div class="color-dot" data-color="card-color-6" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #c7e7ff; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
-        <div class="color-dot" data-color="card-color-7" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
-        <div class="color-dot" data-color="card-color-8" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+      <button id="editColorToggle" aria-expanded="false" style="display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border: 2px solid var(--border-color); border-radius: 10px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 14px;">
+        <span id="editColorBadge" style="width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-color); display: inline-block; background: ${currentColor ? getCardColor(currentColor) : 'var(--bg-primary)'};"></span>
+        <span>Välj färg</span>
+        <span id="editColorChevron" aria-hidden="true">▾</span>
+      </button>
+      <div id="editColorPickerPanel" style="display: none; margin-top: 10px; border: 2px solid var(--border-color); border-radius: 10px; padding: 12px; background: var(--bg-secondary);">
+        <div id="editColorPicker" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+          <div class="color-dot" data-color="" style="width: 36px; height: 36px; border-radius: 50%;
+               background: var(--bg-secondary); border: 3px solid var(--border-color); cursor: pointer;
+               display: flex; align-items: center; justify-content: center; font-size: 20px;"
+               title="Ingen färg">⭘</div>
+          <div class="color-dot" data-color="card-color-1" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #d4f2d4; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
+          <div class="color-dot" data-color="card-color-2" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #ffe4b3; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
+          <div class="color-dot" data-color="card-color-3" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #ffc1cc; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
+          <div class="color-dot" data-color="card-color-4" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #fff7b3; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
+          <div class="color-dot" data-color="card-color-5" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #f3e5f5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
+          <div class="color-dot" data-color="card-color-6" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #c7e7ff; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
+          <div class="color-dot" data-color="card-color-7" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
+          <div class="color-dot" data-color="card-color-8" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+        </div>
+        <div id="customColorContainer" style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 14px;">Valfri färg:</span>
+          <input type="color" id="customColorInput" style="width: 42px; height: 32px; padding: 0; border: 2px solid var(--border-color); border-radius: 6px; background: transparent;">
+          <input type="text" id="customColorHex" placeholder="#rrggbb" style="flex: 1; padding: 8px; font-size: 14px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary);">
+          <button id="applyCustomColor" style="padding: 8px 12px; font-size: 14px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">Använd</button>
+        </div>
+      </div>
+      <div style="margin-top: 10px;">
+        <div style="font-size: 13px; margin-bottom: 6px;">Senaste färger:</div>
+        <div id="editRecentColors" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;"></div>
       </div>
     </div>
     ` : ''}
@@ -991,32 +1080,137 @@ async function createInlineEditor(cardId, group, currentText, isImageBack = fals
   let selectedColor = currentColor;
   if (!isImageBack) {
     const colorDots = document.querySelectorAll('#editColorPicker .color-dot');
+    const customColorInput = document.getElementById('customColorInput');
+    const customColorHexInput = document.getElementById('customColorHex');
+    const applyCustomColorBtn = document.getElementById('applyCustomColor');
+    const customColorContainer = document.getElementById('customColorContainer');
+    const colorPickerPanel = document.getElementById('editColorPickerPanel');
+    const colorToggleButton = document.getElementById('editColorToggle');
+    const colorBadge = document.getElementById('editColorBadge');
+    const colorChevron = document.getElementById('editColorChevron');
+    const recentContainerId = 'editRecentColors';
+
+    const setDotBorders = () => {
+      colorDots.forEach(d => {
+        if (d.dataset.color === '') {
+          d.style.border = '3px solid var(--border-color)';
+        } else if (d.dataset.color === 'card-color-8') {
+          d.style.border = '3px solid #ddd';
+        } else {
+          d.style.border = '3px solid transparent';
+        }
+      });
+
+      const activeDot = Array.from(colorDots).find(d => d.dataset.color === selectedColor || (!selectedColor && d.dataset.color === ''));
+      if (activeDot) {
+        activeDot.style.border = '3px solid var(--accent-color)';
+      }
+    };
+
+    const highlightCustom = () => {
+      customColorContainer.style.outline = '3px solid var(--accent-color)';
+      customColorContainer.style.borderRadius = '8px';
+    };
+
+    const clearCustomHighlight = () => {
+      customColorContainer.style.outline = 'none';
+    };
+
+    const updateBadge = () => {
+      if (!colorBadge) return;
+
+      if (!selectedColor || selectedColor === '') {
+        colorBadge.style.background = 'var(--bg-primary)';
+        colorBadge.style.border = '2px solid var(--border-color)';
+      } else {
+        colorBadge.style.background = getCardColor(selectedColor);
+        colorBadge.style.border = '2px solid transparent';
+      }
+    };
+
+    const setSelectedColor = (color, options = {}) => {
+      selectedColor = color;
+
+      if (color && color.startsWith('#')) {
+        highlightCustom();
+      } else {
+        clearCustomHighlight();
+      }
+
+      setDotBorders();
+      updateBadge();
+
+      if (!options.skipRemember) {
+        rememberColor(color);
+        renderRecentColorSuggestions(recentContainerId, handleRecentSelect);
+      }
+    };
+
+    const toggleColorPanel = () => {
+      if (!colorPickerPanel || !colorToggleButton) return;
+      const isOpen = colorPickerPanel.style.display === 'block';
+      colorPickerPanel.style.display = isOpen ? 'none' : 'block';
+      colorToggleButton.setAttribute('aria-expanded', (!isOpen).toString());
+      if (colorChevron) colorChevron.textContent = isOpen ? '▾' : '▴';
+    };
+
+    const handleRecentSelect = (hex) => {
+      if (customColorInput) customColorInput.value = hex;
+      if (customColorHexInput) customColorHexInput.value = hex;
+      setSelectedColor(hex);
+    };
+
+    // Prefill custom color inputs based on current color (supports imported colors)
+    const initialCustomColor = currentColor ? getCardColor(currentColor) : '#ffffff';
+    if (customColorInput) customColorInput.value = initialCustomColor;
+    if (customColorHexInput) customColorHexInput.value = initialCustomColor;
 
     // Highlight current color
     colorDots.forEach(dot => {
-      if (dot.dataset.color === currentColor) {
-        dot.style.border = '3px solid var(--accent-color)';
-      } else if (!currentColor && dot.dataset.color === '') {
-        dot.style.border = '3px solid var(--accent-color)';
-      }
-
       dot.addEventListener('click', function() {
-        // Remove selection from all
-        colorDots.forEach(d => {
-          if (d.dataset.color === '') {
-            d.style.border = '3px solid var(--border-color)';
-          } else if (d.dataset.color === 'card-color-8') {
-            d.style.border = '3px solid #ddd';
-          } else {
-            d.style.border = '3px solid transparent';
-          }
-        });
-
-        // Select this one
-        this.style.border = '3px solid var(--accent-color)';
-        selectedColor = this.dataset.color;
+        setSelectedColor(this.dataset.color);
       });
     });
+
+    setSelectedColor(currentColor || '', { skipRemember: true });
+    rememberColor(currentColor);
+    renderRecentColorSuggestions(recentContainerId, handleRecentSelect);
+
+    const isValidHex = (value) => /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(value);
+
+    const applyCustomColor = () => {
+      const hexInput = (customColorHexInput ? customColorHexInput.value.trim() : '') || (customColorInput ? customColorInput.value.trim() : '');
+      if (!isValidHex(hexInput)) {
+        alert('Ange en giltig hexkod, t.ex. #ff8800');
+        return;
+      }
+
+      if (customColorInput) customColorInput.value = hexInput;
+      if (customColorHexInput) customColorHexInput.value = hexInput;
+      setSelectedColor(hexInput.toLowerCase());
+    };
+
+    if (applyCustomColorBtn) {
+      applyCustomColorBtn.addEventListener('click', applyCustomColor);
+    }
+
+    if (customColorInput) {
+      customColorInput.addEventListener('input', () => {
+        if (customColorHexInput) customColorHexInput.value = customColorInput.value;
+      });
+    }
+
+    if (customColorHexInput) {
+      customColorHexInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          applyCustomColor();
+        }
+      });
+    }
+
+    if (colorToggleButton) {
+      colorToggleButton.addEventListener('click', toggleColorPanel);
+    }
   }
 
   const cleanup = () => {
@@ -1175,31 +1369,48 @@ async function createBulkEditor(cardIds) {
 
     <div style="margin-bottom: 20px;">
       <label style="display: block; margin-bottom: 8px; font-weight: 500;">Kortfärg:</label>
-      <div id="bulkColorPicker" style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <div class="color-dot" data-color="none" style="width: 36px; height: 36px; border-radius: 50%;
-             background: var(--bg-secondary); border: 3px solid var(--accent-color); cursor: pointer;
-             display: flex; align-items: center; justify-content: center; font-size: 20px;"
-             title="Ändra inte färg">×</div>
-        <div class="color-dot" data-color="" style="width: 36px; height: 36px; border-radius: 50%;
-             background: var(--bg-secondary); border: 3px solid var(--border-color); cursor: pointer;
-             display: flex; align-items: center; justify-content: center; font-size: 20px;"
-             title="Ingen färg">⭘</div>
-        <div class="color-dot" data-color="card-color-1" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #d4f2d4; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
-        <div class="color-dot" data-color="card-color-2" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #ffe4b3; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
-        <div class="color-dot" data-color="card-color-3" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #ffc1cc; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
-        <div class="color-dot" data-color="card-color-4" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #fff7b3; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
-        <div class="color-dot" data-color="card-color-5" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #f3e5f5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
-        <div class="color-dot" data-color="card-color-6" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #c7e7ff; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
-        <div class="color-dot" data-color="card-color-7" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
-        <div class="color-dot" data-color="card-color-8" style="width: 36px; height: 36px; border-radius: 50%;
-             background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+      <button id="bulkColorToggle" aria-expanded="false" style="display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border: 2px solid var(--border-color); border-radius: 10px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 14px;">
+        <span id="bulkColorBadge" style="width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-color); display: inline-block; background: var(--bg-primary);"></span>
+        <span>Välj färg</span>
+        <span id="bulkColorChevron" aria-hidden="true">▾</span>
+      </button>
+      <div id="bulkColorPickerPanel" style="display: none; margin-top: 10px; border: 2px solid var(--border-color); border-radius: 10px; padding: 12px; background: var(--bg-secondary);">
+        <div id="bulkColorPicker" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+          <div class="color-dot" data-color="none" style="width: 36px; height: 36px; border-radius: 50%;
+               background: var(--bg-secondary); border: 3px solid var(--accent-color); cursor: pointer;
+               display: flex; align-items: center; justify-content: center; font-size: 20px;"
+               title="Ändra inte färg">×</div>
+          <div class="color-dot" data-color="" style="width: 36px; height: 36px; border-radius: 50%;
+               background: var(--bg-secondary); border: 3px solid var(--border-color); cursor: pointer;
+               display: flex; align-items: center; justify-content: center; font-size: 20px;"
+               title="Ingen färg">⭘</div>
+          <div class="color-dot" data-color="card-color-1" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #d4f2d4; border: 3px solid transparent; cursor: pointer;" title="Grön"></div>
+          <div class="color-dot" data-color="card-color-2" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #ffe4b3; border: 3px solid transparent; cursor: pointer;" title="Orange"></div>
+          <div class="color-dot" data-color="card-color-3" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #ffc1cc; border: 3px solid transparent; cursor: pointer;" title="Röd"></div>
+          <div class="color-dot" data-color="card-color-4" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #fff7b3; border: 3px solid transparent; cursor: pointer;" title="Gul"></div>
+          <div class="color-dot" data-color="card-color-5" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #f3e5f5; border: 3px solid transparent; cursor: pointer;" title="Lila"></div>
+          <div class="color-dot" data-color="card-color-6" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #c7e7ff; border: 3px solid transparent; cursor: pointer;" title="Blå"></div>
+          <div class="color-dot" data-color="card-color-7" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #e0e0e0; border: 3px solid transparent; cursor: pointer;" title="Grå"></div>
+          <div class="color-dot" data-color="card-color-8" style="width: 36px; height: 36px; border-radius: 50%;
+               background: #ffffff; border: 3px solid #ddd; cursor: pointer;" title="Vit"></div>
+        </div>
+        <div id="bulkCustomColorContainer" style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 14px;">Valfri färg:</span>
+          <input type="color" id="bulkCustomColorInput" style="width: 42px; height: 32px; padding: 0; border: 2px solid var(--border-color); border-radius: 6px; background: transparent;">
+          <input type="text" id="bulkCustomColorHex" placeholder="#rrggbb" style="flex: 1; padding: 8px; font-size: 14px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary);">
+          <button id="bulkApplyCustomColor" style="padding: 8px 12px; font-size: 14px; border: 2px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">Använd</button>
+        </div>
+      </div>
+      <div style="margin-top: 10px;">
+        <div style="font-size: 13px; margin-bottom: 6px;">Senaste färger:</div>
+        <div id="bulkRecentColors" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;"></div>
       </div>
     </div>
 
@@ -1232,27 +1443,132 @@ async function createBulkEditor(cardIds) {
   // Handle color selection
   let selectedColor = 'none'; // Default: don't change
   const colorDots = document.querySelectorAll('#bulkColorPicker .color-dot');
+  const bulkCustomColorInput = document.getElementById('bulkCustomColorInput');
+  const bulkCustomColorHex = document.getElementById('bulkCustomColorHex');
+  const bulkApplyCustomColor = document.getElementById('bulkApplyCustomColor');
+  const bulkCustomColorContainer = document.getElementById('bulkCustomColorContainer');
+  const bulkColorPickerPanel = document.getElementById('bulkColorPickerPanel');
+  const bulkColorToggle = document.getElementById('bulkColorToggle');
+  const bulkColorBadge = document.getElementById('bulkColorBadge');
+  const bulkColorChevron = document.getElementById('bulkColorChevron');
+  const bulkRecentContainerId = 'bulkRecentColors';
+
+  const resetBulkDotBorders = () => {
+    colorDots.forEach(d => {
+      if (d.dataset.color === 'none') {
+        d.style.border = '3px solid transparent';
+      } else if (d.dataset.color === '') {
+        d.style.border = '3px solid var(--border-color)';
+      } else if (d.dataset.color === 'card-color-8') {
+        d.style.border = '3px solid #ddd';
+      } else {
+        d.style.border = '3px solid transparent';
+      }
+    });
+
+    const activeDot = Array.from(colorDots).find(d => d.dataset.color === selectedColor || (!selectedColor && d.dataset.color === ''));
+    if (activeDot) {
+      activeDot.style.border = '3px solid var(--accent-color)';
+    }
+  };
+
+  const highlightBulkCustom = () => {
+    bulkCustomColorContainer.style.outline = '3px solid var(--accent-color)';
+    bulkCustomColorContainer.style.borderRadius = '8px';
+  };
+
+  const clearBulkCustomHighlight = () => {
+    bulkCustomColorContainer.style.outline = 'none';
+  };
+
+  const updateBulkBadge = () => {
+    if (!bulkColorBadge) return;
+
+    if (!selectedColor || selectedColor === 'none' || selectedColor === '') {
+      bulkColorBadge.style.background = 'var(--bg-primary)';
+      bulkColorBadge.style.border = '2px solid var(--border-color)';
+    } else {
+      bulkColorBadge.style.background = getCardColor(selectedColor);
+      bulkColorBadge.style.border = '2px solid transparent';
+    }
+  };
+
+  const setBulkSelectedColor = (color, options = {}) => {
+    selectedColor = color;
+
+    if (color && color.startsWith('#')) {
+      highlightBulkCustom();
+    } else {
+      clearBulkCustomHighlight();
+    }
+
+    resetBulkDotBorders();
+    updateBulkBadge();
+
+    if (!options.skipRemember) {
+      rememberColor(color);
+      renderRecentColorSuggestions(bulkRecentContainerId, handleBulkRecentSelect);
+    }
+  };
+
+  const toggleBulkPanel = () => {
+    if (!bulkColorPickerPanel || !bulkColorToggle) return;
+    const isOpen = bulkColorPickerPanel.style.display === 'block';
+    bulkColorPickerPanel.style.display = isOpen ? 'none' : 'block';
+    bulkColorToggle.setAttribute('aria-expanded', (!isOpen).toString());
+    if (bulkColorChevron) bulkColorChevron.textContent = isOpen ? '▾' : '▴';
+  };
+
+  const handleBulkRecentSelect = (hex) => {
+    if (bulkCustomColorInput) bulkCustomColorInput.value = hex;
+    if (bulkCustomColorHex) bulkCustomColorHex.value = hex;
+    setBulkSelectedColor(hex);
+  };
+
+  const isValidHex = (value) => /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(value);
+
+  const applyBulkCustomColor = () => {
+    const hexInput = (bulkCustomColorHex ? bulkCustomColorHex.value.trim() : '') || (bulkCustomColorInput ? bulkCustomColorInput.value.trim() : '');
+    if (!isValidHex(hexInput)) {
+      alert('Ange en giltig hexkod, t.ex. #00cc99');
+      return;
+    }
+
+    if (bulkCustomColorInput) bulkCustomColorInput.value = hexInput;
+    if (bulkCustomColorHex) bulkCustomColorHex.value = hexInput;
+    setBulkSelectedColor(hexInput.toLowerCase());
+  };
 
   colorDots.forEach(dot => {
     dot.addEventListener('click', function() {
-      // Remove selection from all
-      colorDots.forEach(d => {
-        if (d.dataset.color === 'none') {
-          d.style.border = '3px solid transparent';
-        } else if (d.dataset.color === '') {
-          d.style.border = '3px solid var(--border-color)';
-        } else if (d.dataset.color === 'card-color-8') {
-          d.style.border = '3px solid #ddd';
-        } else {
-          d.style.border = '3px solid transparent';
-        }
-      });
-
-      // Select this one
-      this.style.border = '3px solid var(--accent-color)';
-      selectedColor = this.dataset.color;
+      setBulkSelectedColor(this.dataset.color);
     });
   });
+
+  setBulkSelectedColor(selectedColor, { skipRemember: true });
+  renderRecentColorSuggestions(bulkRecentContainerId, handleBulkRecentSelect);
+
+  if (bulkApplyCustomColor) {
+    bulkApplyCustomColor.addEventListener('click', applyBulkCustomColor);
+  }
+
+  if (bulkCustomColorInput) {
+    bulkCustomColorInput.addEventListener('input', () => {
+      if (bulkCustomColorHex) bulkCustomColorHex.value = bulkCustomColorInput.value;
+    });
+  }
+
+  if (bulkCustomColorHex) {
+    bulkCustomColorHex.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        applyBulkCustomColor();
+      }
+    });
+  }
+
+  if (bulkColorToggle) {
+    bulkColorToggle.addEventListener('click', toggleBulkPanel);
+  }
 
   const cleanup = () => {
     if (overlay.parentNode) {
