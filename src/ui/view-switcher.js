@@ -72,10 +72,10 @@ export async function renderColumnView(searchQuery = '') {
     }
   }
 
-  // Sort cards by last modified (newest first)
+  // Sort cards by modified timestamp (newest first)
   const sortedCards = [...cards].sort((a, b) => {
-    const timeA = a.lastModified || 0;
-    const timeB = b.lastModified || 0;
+    const timeA = a.modified ?? a.lastModified ?? 0;
+    const timeB = b.modified ?? b.lastModified ?? 0;
     return timeB - timeA;
   });
 

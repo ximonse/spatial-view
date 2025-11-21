@@ -20,14 +20,17 @@ export async function initStorage() {
   try {
     await db.open();
     console.log('IndexedDB initialized');
-    
+
     // Check if this is first run
     const count = await db.cards.count();
     if (count === 0) {
       console.log('First run - database is empty');
       await createWelcomeCard();
     }
-    
+
+    // Ensure modification timestamps are consistent
+    await migrateModificationTimestamps();
+
     return db;
   } catch (error) {
     console.error('Failed to initialize storage:', error);
@@ -44,6 +47,7 @@ async function createWelcomeCard() {
     tags: ['välkommen'],
     created: Date.now(),
     modified: Date.now(),
+    lastModified: Date.now(),
     position: { x: 100, y: 100 }
   };
   
@@ -104,12 +108,14 @@ function generateCardId() {
  */
 export async function createCard(cardData, metadata = {}) {
   const uniqueId = generateCardId();
+  const now = Date.now();
 
   const card = {
     ...cardData,
     uniqueId,
-    created: Date.now(),
-    modified: Date.now(),
+    created: now,
+    modified: now,
+    lastModified: now,
     metadata: {
       ...metadata,
       createdAt: new Date().toISOString()
@@ -128,15 +134,47 @@ export async function createCard(cardData, metadata = {}) {
  * Update existing card
  */
 export async function updateCard(id, updates) {
+  const now = Date.now();
   const updated = {
     ...updates,
-    modified: Date.now()
+    modified: now,
+    lastModified: now
   };
-  
+
   await db.cards.update(id, updated);
-  
+
   // Log to changelog
   await logChange('update', id, updated);
+}
+
+/**
+ * Ensure all cards have both legacy and current modification timestamps
+ */
+async function migrateModificationTimestamps() {
+  const cards = await db.cards.toArray();
+
+  const cardsNeedingUpdate = cards
+    .map(card => {
+      const fallbackModified = card.modified ?? card.lastModified ?? card.created ?? Date.now();
+      const ensuredModified = card.modified ?? fallbackModified;
+      const ensuredLastModified = card.lastModified ?? fallbackModified;
+
+      if (card.modified === ensuredModified && card.lastModified === ensuredLastModified) {
+        return null;
+      }
+
+      return {
+        ...card,
+        modified: ensuredModified,
+        lastModified: ensuredLastModified
+      };
+    })
+    .filter(Boolean);
+
+  if (cardsNeedingUpdate.length > 0) {
+    await db.cards.bulkPut(cardsNeedingUpdate);
+    console.log(`Migrated ${cardsNeedingUpdate.length} cards with missing modification timestamps`);
+  }
 }
 
 /**
