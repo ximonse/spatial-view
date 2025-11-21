@@ -4485,8 +4485,8 @@ async function showGeminiAssistant() {
   floatingBtn.title = 'Expandera Gemini Chat';
   floatingBtn.style.cssText = `
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 96px;
+    right: 24px;
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -6093,8 +6093,8 @@ async function showChatGPTAssistant() {
   floatingBtn.title = 'Expandera ChatGPT Chat';
   floatingBtn.style.cssText = `
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 96px;
+    right: 24px;
     width: 56px;
     height: 56px;
     border-radius: 50%;
