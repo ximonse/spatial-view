@@ -75,6 +75,12 @@ Ladda ner komplett backup:
 - Alla bilder som PNG
 - Packade i zip-fil
 
+#### Google Drive-synk (faktiskt beteende från koden)
+- **Krav:** Ett sparat OAuth Client ID i `localStorage` (`googleDriveClientId`).
+- **Autosynk:** Kör varannan timme så länge fliken är synlig. När fliken döljs eller stängs försöker den göra ett sista autosynk.
+- **Ingen dubbelkörning:** Pågående synk blockeras från att starta en ny parallell synk.
+- **Autoläge:** Vid autosynk laddas en nyare Drive-backup ned och återställs direkt innan lokal data laddas upp (ingen fråga visas). Manuell synk visar fortfarande dialogen som frågar om du vill ladda ner den nyare backupen först.
+
 ### 🌓 Teman
 - ☀️ Ljust
 - 🌙 Mörkt
