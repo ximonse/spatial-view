@@ -19,7 +19,9 @@ export function normalizeCardImage(image) {
   if (typeof image === 'object') {
     const base64 = typeof image.base64 === 'string' ? image.base64 : null;
     const url = typeof image.url === 'string' ? image.url : null;
-    const src = base64 || url;
+    // Some callers may already pass a normalized image with `src`
+    const directSrc = typeof image.src === 'string' ? image.src : null;
+    const src = base64 || url || directSrc;
 
     if (!src) {
       console.warn('normalizeCardImage: missing base64/url on image object', image);
