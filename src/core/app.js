@@ -104,18 +104,67 @@ export async function initApp(state) {
     }
   }, 2000); // Wait 2 seconds after init to avoid blocking startup
 
-  // Auto-sync to Drive on page close
-  window.addEventListener('beforeunload', async () => {
-    const autoSync = localStorage.getItem('autoSyncOnClose');
-    if (autoSync === 'true') {
-      try {
-        const { syncWithDrive } = await import('../lib/drive-sync.js');
-        await syncWithDrive();
-      } catch (error) {
-        console.error('Auto-sync on close failed:', error);
-      }
+  setupDriveAutoSync();
+
+  console.log('Spatial View ready!');
+}
+
+function setupDriveAutoSync() {
+  const intervalMs = 2 * 60 * 60 * 1000; // 2 hours
+  let intervalId = null;
+  let syncing = false;
+
+  const runSync = async (reason) => {
+    const hasClientId = Boolean(localStorage.getItem('googleDriveClientId'));
+    if (syncing || !hasClientId) {
+      return;
+    }
+
+    const isClosing = reason === 'pagehide' || reason === 'tab-hidden';
+    if (document.visibilityState !== 'visible' && !isClosing) {
+      return;
+    }
+    syncing = true;
+    try {
+      const { syncWithDrive } = await import('../lib/drive-sync.js');
+      await syncWithDrive({ autoMode: true, reason });
+    } catch (error) {
+      console.error('Auto Drive sync failed:', error);
+    } finally {
+      syncing = false;
+    }
+  };
+
+  const startInterval = () => {
+    const hasClientId = Boolean(localStorage.getItem('googleDriveClientId'));
+    if (intervalId || !hasClientId || document.visibilityState !== 'visible') return;
+    intervalId = setInterval(() => runSync('interval'), intervalMs);
+  };
+
+  const stopInterval = () => {
+    if (!intervalId) return;
+    clearInterval(intervalId);
+    intervalId = null;
+  };
+
+  // Start auto-sync when page is visible
+  if (document.visibilityState === 'visible') {
+    startInterval();
+  }
+
+  // Pause timers when hidden, resume on focus
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      startInterval();
+    } else {
+      stopInterval();
+      // Try to sync once right as the tab is being hidden/closed
+      runSync('tab-hidden');
     }
   });
 
-  console.log('Spatial View ready!');
+  // Extra safeguard for tab close/navigation
+  window.addEventListener('pagehide', () => {
+    runSync('pagehide');
+  });
 }

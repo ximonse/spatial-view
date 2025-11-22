@@ -562,70 +562,81 @@ export async function checkAndOfferRestore() {
 /**
  * Main sync function - two-way sync (download then upload)
  */
-export async function syncWithDrive() {
+export async function syncWithDrive(options = {}) {
+  const { autoMode = false } = options;
   try {
     // Step 1: Check for newer backup in Drive
     console.log('Checking Drive for newer backup...');
     const newerBackup = await checkForNewerBackup();
 
     if (newerBackup) {
-      // Ask user if they want to download first
-      const shouldDownload = await new Promise((resolve) => {
-        const dialog = document.createElement('div');
-        dialog.style.cssText = `
-          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-          background: rgba(0, 0, 0, 0.7); z-index: 10000;
-          display: flex; align-items: center; justify-content: center;
-        `;
-
-        const backupDate = new Date(newerBackup.modifiedTime).toLocaleString('sv-SE');
-
-        dialog.innerHTML = `
-          <div style="background: var(--bg-primary); color: var(--text-primary);
-                      border-radius: 12px; padding: 30px; width: 90%; max-width: 500px;
-                      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            <h2 style="margin: 0 0 20px 0;">☁️ Nyare backup i Drive</h2>
-            <p style="margin: 0 0 15px 0; line-height: 1.6;">
-              Det finns en nyare backup:<br>
-              <strong>${newerBackup.name}</strong><br>
-              ${backupDate}
-            </p>
-            <p style="margin: 0 0 20px 0; line-height: 1.6;">
-              Vill du ladda ner den först innan du synkar din data?
-            </p>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-              <button id="skipDownload" style="padding: 10px 20px; border: 1px solid var(--border-color);
-                      background: var(--bg-secondary); color: var(--text-primary);
-                      border-radius: 6px; cursor: pointer;">Nej, ladda upp min data</button>
-              <button id="doDownload" style="padding: 10px 20px; border: none;
-                      background: var(--accent-color); color: white;
-                      border-radius: 6px; cursor: pointer;">Ja, ladda ner först</button>
-            </div>
-          </div>
-        `;
-
-        document.body.appendChild(dialog);
-
-        document.getElementById('skipDownload').onclick = () => {
-          dialog.remove();
-          resolve(false);
-        };
-
-        document.getElementById('doDownload').onclick = () => {
-          dialog.remove();
-          resolve(true);
-        };
-      });
-
-      if (shouldDownload) {
-        // Download and restore
-        console.log('Downloading backup from Drive...');
+      if (autoMode) {
+        console.log('Auto-mode: downloading newer backup before sync...');
         const blob = await downloadBackupFromDrive(newerBackup.id);
 
         if (blob && window.handleRestoreFromBlob) {
           await window.handleRestoreFromBlob(blob);
-          console.log('Restored from Drive before sync');
+          console.log('Restored from Drive before sync (auto-mode)');
+        }
+      } else {
+        // Ask user if they want to download first
+        const shouldDownload = await new Promise((resolve) => {
+          const dialog = document.createElement('div');
+          dialog.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7); z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+          `;
+
+          const backupDate = new Date(newerBackup.modifiedTime).toLocaleString('sv-SE');
+
+          dialog.innerHTML = `
+            <div style="background: var(--bg-primary); color: var(--text-primary);
+                        border-radius: 12px; padding: 30px; width: 90%; max-width: 500px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <h2 style="margin: 0 0 20px 0;">☁️ Nyare backup i Drive</h2>
+              <p style="margin: 0 0 15px 0; line-height: 1.6;">
+                Det finns en nyare backup:<br>
+                <strong>${newerBackup.name}</strong><br>
+                ${backupDate}
+              </p>
+              <p style="margin: 0 0 20px 0; line-height: 1.6;">
+                Vill du ladda ner den först innan du synkar din data?
+              </p>
+              <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="skipDownload" style="padding: 10px 20px; border: 1px solid var(--border-color);
+                        background: var(--bg-secondary); color: var(--text-primary);
+                        border-radius: 6px; cursor: pointer;">Nej, ladda upp min data</button>
+                <button id="doDownload" style="padding: 10px 20px; border: none;
+                        background: var(--accent-color); color: white;
+                        border-radius: 6px; cursor: pointer;">Ja, ladda ner först</button>
+              </div>
+            </div>
+          `;
+
+          document.body.appendChild(dialog);
+
+          document.getElementById('skipDownload').onclick = () => {
+            dialog.remove();
+            resolve(false);
+          };
+
+          document.getElementById('doDownload').onclick = () => {
+            dialog.remove();
+            resolve(true);
+          };
+        });
+
+        if (shouldDownload) {
+          // Download and restore
+          console.log('Downloading backup from Drive...');
+          const blob = await downloadBackupFromDrive(newerBackup.id);
+
+          if (blob && window.handleRestoreFromBlob) {
+            await window.handleRestoreFromBlob(blob);
+            console.log('Restored from Drive before sync');
+          }
         }
       }
     }
