@@ -2688,12 +2688,26 @@ async function handleReadWithAICommand() {
   alert(`✅ ${imageCardIds.length} kort lästa med Gemini AI. Texten finns på baksidan - dubbelklicka och klicka "Vänd kort" för att se.`);
 }
 
-async function handleAIChooserCommand() {
+async function handleAIChooserCommand(forceChooser = false) {
+  const savedChoice = getSavedAIPreference();
+
+  if (savedChoice && !forceChooser) {
+    if (savedChoice === 'gemini') {
+      await showGeminiAssistant();
+    } else if (savedChoice === 'chatgpt') {
+      await showChatGPTAssistant();
+    }
+    return;
+  }
+
   const choice = await showAIChooser();
-  if (choice === 'gemini') {
-    await showGeminiAssistant();
-  } else if (choice === 'chatgpt') {
-    await showChatGPTAssistant();
+  if (choice === 'gemini' || choice === 'chatgpt') {
+    rememberAIPreference(choice);
+    if (choice === 'gemini') {
+      await showGeminiAssistant();
+    } else if (choice === 'chatgpt') {
+      await showChatGPTAssistant();
+    }
   }
 }
 
@@ -4249,6 +4263,102 @@ async function pasteImageFromClipboard() {
 // SECTION 9: UI DIALOGS (Command Palette, Quality Dialog, Text Input, Gemini Assistant)
 // ============================================================================
 
+const AI_PREFERENCE_KEY = 'spatialview:lastAIModel';
+const AI_HISTORY_PREFIX = 'spatialview:aiHistory';
+
+function getBoardScopedKey(model) {
+  const boardId = window.location.pathname || 'root';
+  return `${AI_HISTORY_PREFIX}:${boardId}:${model}`;
+}
+
+function getSavedAIPreference() {
+  try {
+    return localStorage.getItem(AI_PREFERENCE_KEY);
+  } catch (error) {
+    console.warn('Kunde inte läsa AI-val från localStorage:', error);
+    return null;
+  }
+}
+
+function rememberAIPreference(model) {
+  try {
+    localStorage.setItem(AI_PREFERENCE_KEY, model);
+  } catch (error) {
+    console.warn('Kunde inte spara AI-val:', error);
+  }
+}
+
+function loadConversationHistory(model) {
+  try {
+    const stored = localStorage.getItem(getBoardScopedKey(model));
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('Kunde inte läsa sparad konversation:', error);
+    return [];
+  }
+}
+
+function saveConversationHistory(model, history) {
+  try {
+    localStorage.setItem(getBoardScopedKey(model), JSON.stringify(history));
+  } catch (error) {
+    console.warn('Kunde inte spara konversation:', error);
+  }
+}
+
+async function buildAIContextSnapshot(toolRegistry) {
+  try {
+    const cards = await toolRegistry.getAllCards();
+    const totalCards = cards.length;
+    const imageCards = cards.filter(c => c.hasImage).length;
+
+    const selectedNodes = layer.find('.selected');
+    const selectedIds = new Set(
+      selectedNodes
+        .map(node => node.getAttr('cardId'))
+        .filter(Boolean)
+    );
+    const selectedCards = cards.filter(c => selectedIds.has(c.id));
+
+    const tagInfo = typeof toolRegistry.listAllTags === 'function'
+      ? await toolRegistry.listAllTags()
+      : null;
+    const topTags = (tagInfo?.tags || [])
+      .slice(0, 5)
+      .map(t => `${t.tag} (${t.count})`)
+      .join(', ');
+
+    const createdTimestamps = cards
+      .map(c => c.created)
+      .filter(ts => typeof ts === 'number' && !Number.isNaN(ts));
+    const dateSpan = createdTimestamps.length
+      ? `${new Date(Math.min(...createdTimestamps)).toISOString().slice(0, 10)} → ${new Date(Math.max(...createdTimestamps)).toISOString().slice(0, 10)}`
+      : 'saknas';
+
+    const selectedSummary = selectedCards
+      .slice(0, 3)
+      .map(c => {
+        const preview = c.text || c.backText || '(tomt kort)';
+        return `#${c.id}: ${preview.slice(0, 80)}`;
+      })
+      .join('; ');
+
+    return [
+      `Kort: ${totalCards} totalt (${imageCards} med bild)`,
+      selectedIds.size
+        ? `Markerade (${selectedIds.size}): ${selectedSummary}${selectedCards.length > 3 ? ' …' : ''}`
+        : 'Markerade: inga',
+      topTags ? `Vanliga tags: ${topTags}` : 'Inga tags hittades',
+      `Datumspann (skapade): ${dateSpan}`
+    ].join('\n');
+  } catch (error) {
+    console.warn('Kunde inte bygga kontextöversikt:', error);
+    return null;
+  }
+}
+
 /**
  * Show AI Assistant chooser (Gemini or ChatGPT)
  */
@@ -4286,6 +4396,8 @@ async function showAIChooser() {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
 
+    const lastChoice = getSavedAIPreference();
+
     dialog.innerHTML = `
       <h2 style="margin: 0 0 20px 0; text-align: center; color: var(--text-primary);">
         Välj AI-assistent
@@ -4293,6 +4405,7 @@ async function showAIChooser() {
       <p style="margin: 0 0 30px 0; text-align: center; color: var(--text-secondary);">
         Tryck <kbd>G</kbd> för Gemini eller <kbd>C</kbd> för ChatGPT
       </p>
+      ${lastChoice ? `<p style="margin: -12px 0 24px 0; text-align: center; color: var(--text-secondary); font-size: 13px;">Senaste valda: <strong>${lastChoice === 'gemini' ? 'Gemini' : 'ChatGPT'}</strong> (startar direkt om du väljer samma igen)</p>` : ''}
       <div style="display: flex; gap: 16px; justify-content: center;">
         <button id="chooseGemini" style="
           flex: 1;
@@ -4433,6 +4546,7 @@ async function showGeminiAssistant() {
         🤖 Gemini Chat
       </h3>
       <div style="display: flex; gap: 12px;">
+        <button id="geminiSwitchModel" title="Byt AI-modell" style="background: none; border: 1px solid var(--border-color); font-size: 13px; cursor: pointer; color: var(--text-secondary); padding: 6px 10px; border-radius: 8px;">Byt</button>
         <button id="geminiMinimize" title="Minimera (sparar konversationen)" style="background: none; border: none; font-size: 20px; cursor: pointer;
                 color: var(--text-secondary); padding: 0; line-height: 1;">−</button>
         <button id="geminiClose" title="Stäng (raderar konversationen)" style="background: none; border: none; font-size: 24px; cursor: pointer;
@@ -4482,13 +4596,15 @@ async function showGeminiAssistant() {
   const chatMessages = document.getElementById('chatMessages');
   const askBtn = document.getElementById('geminiAsk');
   const closeBtn = document.getElementById('geminiClose');
+  const switchModelBtn = document.getElementById('geminiSwitchModel');
   const minimizeBtn = document.getElementById('geminiMinimize');
   const voiceBtn = document.getElementById('geminiVoice');
   const voiceIndicator = document.getElementById('voiceIndicator');
   const voiceTranscript = document.getElementById('voiceTranscript');
 
   // Conversation history
-  const conversationHistory = [];
+  const conversationHistory = loadConversationHistory('gemini');
+  const persistHistory = () => saveConversationHistory('gemini', conversationHistory);
 
   // Create minimize floating button (initially hidden)
   const floatingBtn = document.createElement('button');
@@ -4524,6 +4640,7 @@ async function showGeminiAssistant() {
 
   // Minimize function
   const minimize = () => {
+    persistHistory();
     panel.style.display = 'none';
     floatingBtn.style.display = 'flex';
   };
@@ -4737,11 +4854,11 @@ async function showGeminiAssistant() {
   };
 
   // Function to add system message (thinking, errors, etc.)
-  const addSystemMessage = (text) => {
-    const messageDiv = document.createElement('div');
-    messageDiv.style.cssText = `
-      padding: 8px 12px;
-      border-radius: 8px;
+    const addSystemMessage = (text) => {
+      const messageDiv = document.createElement('div');
+      messageDiv.style.cssText = `
+        padding: 8px 12px;
+        border-radius: 8px;
       font-size: 13px;
       color: var(--text-secondary);
       font-style: italic;
@@ -4754,6 +4871,22 @@ async function showGeminiAssistant() {
     return messageDiv;
   };
 
+  const renderStoredConversation = () => {
+    if (!conversationHistory.length) return;
+
+    conversationHistory.forEach(msg => {
+      if (msg.role === 'assistant') {
+        addMessage(msg.text, false);
+      } else if (msg.role === 'user') {
+        addMessage(msg.text, true);
+      } else {
+        addSystemMessage(msg.text);
+      }
+    });
+
+    addSystemMessage(`🔁 Fortsätter tidigare chatt (${conversationHistory.length} meddelanden).`);
+  };
+
   // Escape key handler (declare before cleanup so we can reference it)
   const handleEscape = (e) => {
     if (e.key === 'Escape') {
@@ -4763,6 +4896,7 @@ async function showGeminiAssistant() {
 
   // Cleanup function
   const cleanup = () => {
+    persistHistory();
     document.removeEventListener('keydown', handleEscape);
     document.removeEventListener('keydown', handleVoiceKey);
     document.removeEventListener('keyup', handleVoiceKeyUp);
@@ -4779,6 +4913,13 @@ async function showGeminiAssistant() {
 
   // Close button handler
   closeBtn.addEventListener('click', cleanup);
+
+  // Switch model handler
+  const handleSwitchModel = async () => {
+    cleanup();
+    await handleAIChooserCommand(true);
+  };
+  switchModelBtn.addEventListener('click', handleSwitchModel);
 
   // Minimize button handler
   minimizeBtn.addEventListener('click', minimize);
@@ -5933,6 +6074,21 @@ async function showGeminiAssistant() {
     }
   };
 
+  renderStoredConversation();
+
+  const injectContextSnapshot = async () => {
+    if (conversationHistory.length > 0) return;
+
+    const contextSummary = await buildAIContextSnapshot(toolRegistry);
+    if (contextSummary) {
+      addSystemMessage('📌 Förser AI:n med aktuell tavla-kontekst.');
+      conversationHistory.push({ role: 'system', text: contextSummary });
+      persistHistory();
+    }
+  };
+
+  await injectContextSnapshot();
+
   // Ask handler - now with chat interface
   const handleSend = async () => {
     const query = queryInput.value.trim();
@@ -5941,6 +6097,7 @@ async function showGeminiAssistant() {
     // Add user message to chat
     addMessage(query, true);
     conversationHistory.push({ role: 'user', text: query });
+    persistHistory();
 
     // Clear input and disable button
     queryInput.value = '';
@@ -5960,6 +6117,7 @@ async function showGeminiAssistant() {
       // Add Gemini response to chat
       addMessage(response, false);
       conversationHistory.push({ role: 'assistant', text: response });
+      persistHistory();
 
     } catch (error) {
       console.error('Gemini Assistant error:', error);
@@ -6041,6 +6199,7 @@ async function showChatGPTAssistant() {
         💬 ChatGPT Chat
       </h3>
       <div style="display: flex; gap: 12px;">
+        <button id="chatgptSwitchModel" title="Byt AI-modell" style="background: none; border: 1px solid var(--border-color); font-size: 13px; cursor: pointer; color: var(--text-secondary); padding: 6px 10px; border-radius: 8px;">Byt</button>
         <button id="chatgptMinimize" title="Minimera (sparar konversationen)" style="background: none; border: none; font-size: 20px; cursor: pointer;
                 color: var(--text-secondary); padding: 0; line-height: 1;">−</button>
         <button id="chatgptClose" title="Stäng (raderar konversationen)" style="background: none; border: none; font-size: 24px; cursor: pointer;
@@ -6086,17 +6245,19 @@ async function showChatGPTAssistant() {
 
   document.body.appendChild(panel);
 
-  const queryInput = document.getElementById('chatgptQuery');
-  const chatMessages = document.getElementById('chatgptMessages');
-  const askBtn = document.getElementById('chatgptAsk');
-  const closeBtn = document.getElementById('chatgptClose');
-  const minimizeBtn = document.getElementById('chatgptMinimize');
-  const voiceBtn = document.getElementById('chatgptVoice');
-  const voiceIndicator = document.getElementById('chatgptVoiceIndicator');
-  const voiceTranscript = document.getElementById('chatgptVoiceTranscript');
+    const queryInput = document.getElementById('chatgptQuery');
+    const chatMessages = document.getElementById('chatgptMessages');
+    const askBtn = document.getElementById('chatgptAsk');
+    const closeBtn = document.getElementById('chatgptClose');
+    const switchModelBtn = document.getElementById('chatgptSwitchModel');
+    const minimizeBtn = document.getElementById('chatgptMinimize');
+    const voiceBtn = document.getElementById('chatgptVoice');
+    const voiceIndicator = document.getElementById('chatgptVoiceIndicator');
+    const voiceTranscript = document.getElementById('chatgptVoiceTranscript');
 
-  // Conversation history
-  const conversationHistory = [];
+    // Conversation history
+    const conversationHistory = loadConversationHistory('chatgpt');
+    const persistHistory = () => saveConversationHistory('chatgpt', conversationHistory);
 
   // Create minimize floating button (initially hidden)
   const floatingBtn = document.createElement('button');
@@ -6130,11 +6291,12 @@ async function showChatGPTAssistant() {
   });
   document.body.appendChild(floatingBtn);
 
-  // Minimize function
-  const minimize = () => {
-    panel.style.display = 'none';
-    floatingBtn.style.display = 'flex';
-  };
+    // Minimize function
+    const minimize = () => {
+      persistHistory();
+      panel.style.display = 'none';
+      floatingBtn.style.display = 'flex';
+    };
 
   // Expand function
   const expand = () => {
@@ -6327,35 +6489,59 @@ async function showChatGPTAssistant() {
       background: var(--bg-secondary);
     `;
     messageDiv.textContent = text;
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-    return messageDiv;
-  };
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return messageDiv;
+    };
 
-  const handleEscape = (e) => {
-    if (e.key === 'Escape') {
+    const renderStoredConversation = () => {
+      if (!conversationHistory.length) return;
+
+      conversationHistory.forEach(msg => {
+        if (msg.role === 'assistant') {
+          addMessage(msg.text, false);
+        } else if (msg.role === 'user') {
+          addMessage(msg.text, true);
+        } else {
+          addSystemMessage(msg.text);
+        }
+      });
+
+      addSystemMessage(`🔁 Fortsätter tidigare chatt (${conversationHistory.length} meddelanden).`);
+    };
+
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        cleanup();
+      }
+    };
+
+    const cleanup = () => {
+      persistHistory();
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('keydown', handleVoiceKey);
+      document.removeEventListener('keyup', handleVoiceKeyUp);
+
+      if (isRecording && recognition) {
+        recognition.stop();
+      }
+
+      // Remove panel and floating button
+      panel.remove();
+      floatingBtn.remove();
+    };
+
+    closeBtn.addEventListener('click', cleanup);
+
+    // Switch model handler
+    const handleSwitchModel = async () => {
       cleanup();
-    }
-  };
+      await handleAIChooserCommand(true);
+    };
+    switchModelBtn.addEventListener('click', handleSwitchModel);
 
-  const cleanup = () => {
-    document.removeEventListener('keydown', handleEscape);
-    document.removeEventListener('keydown', handleVoiceKey);
-    document.removeEventListener('keyup', handleVoiceKeyUp);
-
-    if (isRecording && recognition) {
-      recognition.stop();
-    }
-
-    // Remove panel and floating button
-    panel.remove();
-    floatingBtn.remove();
-  };
-
-  closeBtn.addEventListener('click', cleanup);
-
-  // Minimize button handler
-  minimizeBtn.addEventListener('click', minimize);
+    // Minimize button handler
+    minimizeBtn.addEventListener('click', minimize);
 
   // Floating button handler (expand)
   floatingBtn.addEventListener('click', expand);
@@ -7139,43 +7325,60 @@ async function showChatGPTAssistant() {
         console.error('Error arranging cards by day:', error);
         return `Could not arrange cards by day: ${error.message}`;
       }
-    }
-  };
+      }
+    };
 
-  // Ask handler
-  const handleSend = async () => {
-    const query = queryInput.value.trim();
-    if (!query) return;
+    renderStoredConversation();
 
-    addMessage(query, true);
-    conversationHistory.push({ role: 'user', text: query });
+    const injectContextSnapshot = async () => {
+      if (conversationHistory.length > 0) return;
 
-    queryInput.value = '';
-    askBtn.disabled = true;
-    askBtn.textContent = '...';
+      const contextSummary = await buildAIContextSnapshot(toolRegistry);
+      if (contextSummary) {
+        addSystemMessage('📌 Förser AI:n med aktuell tavla-kontekst.');
+        conversationHistory.push({ role: 'system', text: contextSummary });
+        persistHistory();
+      }
+    };
 
-    const thinkingMsg = addSystemMessage('💭 ChatGPT tänker...');
+    await injectContextSnapshot();
 
-    try {
-      const response = await executeChatGPTAgent(query, tools, toolRegistry, conversationHistory);
+    // Ask handler
+    const handleSend = async () => {
+      const query = queryInput.value.trim();
+      if (!query) return;
 
-      thinkingMsg.remove();
+      addMessage(query, true);
+      conversationHistory.push({ role: 'user', text: query });
+      persistHistory();
 
-      addMessage(response, false);
-      conversationHistory.push({ role: 'assistant', text: response });
+      queryInput.value = '';
+      askBtn.disabled = true;
+      askBtn.textContent = '...';
 
-    } catch (error) {
-      console.error('ChatGPT Assistant error:', error);
+      const thinkingMsg = addSystemMessage('💭 ChatGPT tänker...');
 
-      thinkingMsg.remove();
+      try {
+        const response = await executeChatGPTAgent(query, tools, toolRegistry, conversationHistory);
 
-      addSystemMessage(`❌ Fel: ${error.message}`);
-    } finally {
-      askBtn.disabled = false;
-      askBtn.textContent = 'Skicka';
-      queryInput.focus();
-    }
-  };
+        thinkingMsg.remove();
+
+        addMessage(response, false);
+        conversationHistory.push({ role: 'assistant', text: response });
+        persistHistory();
+
+      } catch (error) {
+        console.error('ChatGPT Assistant error:', error);
+
+        thinkingMsg.remove();
+
+        addSystemMessage(`❌ Fel: ${error.message}`);
+      } finally {
+        askBtn.disabled = false;
+        askBtn.textContent = 'Skicka';
+        queryInput.focus();
+      }
+    };
 
   askBtn.addEventListener('click', handleSend);
 
