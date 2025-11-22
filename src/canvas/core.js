@@ -7762,6 +7762,24 @@ export function fitAllCards() {
 // ============================================================================
 
 /**
+ * Normalize search query (trim, lowercase) and guard against invalid inputs
+ */
+export function normalizeSearchQuery(query) {
+  if (typeof query !== 'string') return '';
+  return query.trim().toLowerCase();
+}
+
+/**
+ * Build the searchable text payload for a card
+ */
+export function buildCardSearchText(card) {
+  const text = (card.text || '').toLowerCase();
+  const backText = (card.backText || '').toLowerCase();
+  const tags = (card.tags || []).join(' ').toLowerCase();
+  return [text, backText, tags].join(' ').trim();
+}
+
+/**
  * Check if term matches with wildcard support
  */
 export function matchWithWildcard(term, searchableText) {
@@ -7787,7 +7805,8 @@ export function checkProximity(query, searchableText) {
   const term2 = proximityMatch[4].trim();
 
   // Split text into words
-  const words = searchableText.split(/\s+/);
+  const normalizedText = typeof searchableText === 'string' ? searchableText.toLowerCase() : '';
+  const words = normalizedText.split(/\s+/);
 
   // Find positions of both terms
   const positions1 = [];
@@ -7815,60 +7834,68 @@ export function checkProximity(query, searchableText) {
  * Supports: OR, AND, NOT, "exact phrases", *, ( ), NEAR/x, N/x
  */
 export function evaluateBooleanQuery(query, searchableText) {
+  const normalizedQuery = normalizeSearchQuery(query);
+  const normalizedText = typeof searchableText === 'string' ? searchableText.toLowerCase() : '';
+
+  if (!normalizedQuery) {
+    console.log('[evaluateBooleanQuery] Empty or invalid query provided');
+    return false;
+  }
+
   // Handle different boolean operators
-  console.log('[evaluateBooleanQuery] Query:', query, 'SearchableText:', searchableText.substring(0, 50));
+  console.log('[evaluateBooleanQuery] Query:', normalizedQuery, 'SearchableText:', normalizedText.substring(0, 50));
 
   // Handle parentheses (highest precedence)
-  if (query.includes('(')) {
+  if (normalizedQuery.includes('(')) {
     // Find matching parentheses and evaluate recursively
-    const parenMatch = query.match(/\(([^()]+)\)/);
+    const parenMatch = normalizedQuery.match(/\(([^()]+)\)/);
     if (parenMatch) {
       const innerQuery = parenMatch[1];
-      const innerResult = evaluateBooleanQuery(innerQuery, searchableText);
+      const innerResult = evaluateBooleanQuery(innerQuery, normalizedText);
       // Replace the parentheses group with result placeholder
-      const replaced = query.replace(parenMatch[0], innerResult ? '__TRUE__' : '__FALSE__');
-      return evaluateBooleanQuery(replaced, searchableText);
+      const replaced = normalizedQuery.replace(parenMatch[0], innerResult ? '__TRUE__' : '__FALSE__');
+      return evaluateBooleanQuery(replaced, normalizedText);
     }
   }
 
   // Handle result placeholders from parentheses
-  if (query === '__TRUE__') return true;
-  if (query === '__FALSE__') return false;
+  if (normalizedQuery === '__TRUE__') return true;
+  if (normalizedQuery === '__FALSE__') return false;
 
   // Handle proximity search (NEAR/x or N/x)
-  if (/\s+(near|n)\/\d+\s+/i.test(query)) {
-    return checkProximity(query, searchableText);
+  if (/\s+(near|n)\/\d+\s+/i.test(normalizedQuery)) {
+    return checkProximity(normalizedQuery, normalizedText);
   }
 
   // Split by OR first (lowest precedence)
-  if (query.includes(' or ')) {
-    const orParts = query.split(' or ');
+  if (normalizedQuery.includes(' or ')) {
+    const orParts = normalizedQuery.split(' or ');
     console.log('[evaluateBooleanQuery] OR parts:', orParts);
-    return orParts.some(part => evaluateBooleanQuery(part.trim(), searchableText));
+    return orParts.some(part => evaluateBooleanQuery(part.trim(), normalizedText));
   }
 
   // Handle NOT operations
-  if (query.includes(' not ')) {
-    const notIndex = query.indexOf(' not ');
-    const beforeNot = query.substring(0, notIndex).trim();
-    const afterNot = query.substring(notIndex + 5).trim(); // ' not '.length = 5
+  if (normalizedQuery.includes(' not ')) {
+    const notIndex = normalizedQuery.indexOf(' not ');
+    const beforeNot = normalizedQuery.substring(0, notIndex).trim();
+    const afterNot = normalizedQuery.substring(notIndex + 5).trim(); // ' not '.length = 5
 
     // If there's something before NOT, it must match
     let beforeMatches = true;
     if (beforeNot) {
-      beforeMatches = evaluateBooleanQuery(beforeNot, searchableText);
+      beforeMatches = evaluateBooleanQuery(beforeNot, normalizedText);
     }
 
     // The part after NOT must NOT match
-    const afterMatches = evaluateBooleanQuery(afterNot, searchableText);
+    const afterMatches = evaluateBooleanQuery(afterNot, normalizedText);
 
     return beforeMatches && !afterMatches;
   }
 
   // Handle AND operations (default behavior and explicit)
-  const andParts = query.includes(' and ') ?
-    query.split(' and ') :
-    query.split(' ').filter(term => term.length > 0);
+  const andParts = normalizedQuery.includes(' and ')
+    ? normalizedQuery.split(' and ')
+    : normalizedQuery.split(' ').filter(term => term.length > 0);
 
   return andParts.every(term => {
     term = term.trim();
@@ -7882,16 +7909,16 @@ export function evaluateBooleanQuery(query, searchableText) {
     if (term.startsWith('"') && term.endsWith('"')) {
       // Exact phrase search
       const phrase = term.slice(1, -1);
-      console.log('[evaluateBooleanQuery] Exact phrase search:', phrase, 'Match:', searchableText.includes(phrase));
-      return searchableText.includes(phrase);
+      console.log('[evaluateBooleanQuery] Exact phrase search:', phrase, 'Match:', normalizedText.includes(phrase));
+      return normalizedText.includes(phrase);
     } else if (term.startsWith("'") && term.endsWith("'")) {
       // Also support single quotes
       const phrase = term.slice(1, -1);
-      console.log('[evaluateBooleanQuery] Single quote phrase search:', phrase, 'Match:', searchableText.includes(phrase));
-      return searchableText.includes(phrase);
+      console.log('[evaluateBooleanQuery] Single quote phrase search:', phrase, 'Match:', normalizedText.includes(phrase));
+      return normalizedText.includes(phrase);
     } else {
       // Regular word search with wildcard support
-      const matches = matchWithWildcard(term, searchableText);
+      const matches = matchWithWildcard(term, normalizedText);
       console.log('[evaluateBooleanQuery] Regular/wildcard search:', term, 'Match:', matches);
       return matches;
     }
@@ -7917,7 +7944,9 @@ export async function searchCards(query) {
   console.log('[searchCards] Total cards in DB:', allCards.length);
   console.log('[searchCards] Total card groups on canvas:', allGroups.length);
 
-  if (!query || query.trim() === '') {
+  const normalizedQuery = normalizeSearchQuery(query);
+
+  if (!normalizedQuery) {
     // Clear search - reset all cards
     console.log('[searchCards] Clearing search, resetting all cards');
     allGroups.forEach(group => {
@@ -7934,22 +7963,16 @@ export async function searchCards(query) {
     return;
   }
 
-  const lowerQuery = query.toLowerCase();
   const matchingCards = new Set();
 
   // Find matching cards using boolean logic
   allCards.forEach(card => {
-    const text = (card.text || '').toLowerCase();
-    const backText = (card.backText || '').toLowerCase();
-    const tags = (card.tags || []).join(' ').toLowerCase();
-
-    // Combine all searchable text
-    const searchableText = [text, backText, tags].join(' ');
+    const searchableText = buildCardSearchText(card);
 
     console.log('[searchCards] Checking card:', card.id);
 
     // Use boolean query evaluation
-    if (evaluateBooleanQuery(lowerQuery, searchableText)) {
+    if (evaluateBooleanQuery(normalizedQuery, searchableText)) {
       console.log('[searchCards] ✓ Match found:', card.id);
       matchingCards.add(card.id);
     }
