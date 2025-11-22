@@ -2700,13 +2700,14 @@ async function handleAIChooserCommand(forceChooser = false) {
     return;
   }
 
-  const choice = await showAIChooser();
+  const selection = await showAIChooser();
+  const choice = selection?.model;
   if (choice === 'gemini' || choice === 'chatgpt') {
     rememberAIPreference(choice);
     if (choice === 'gemini') {
-      await showGeminiAssistant();
+      await showGeminiAssistant({ intent: selection.intent, prefetchedContextSummary: selection.contextSummary });
     } else if (choice === 'chatgpt') {
-      await showChatGPTAssistant();
+      await showChatGPTAssistant({ intent: selection.intent, prefetchedContextSummary: selection.contextSummary });
     }
   }
 }
@@ -4308,9 +4309,11 @@ function saveConversationHistory(model, history) {
   }
 }
 
-async function buildAIContextSnapshot(toolRegistry) {
+async function buildAIContextSnapshot(toolRegistry = null) {
   try {
-    const cards = await toolRegistry.getAllCards();
+    const cards = toolRegistry?.getAllCards
+      ? await toolRegistry.getAllCards()
+      : await getAllCards();
     const totalCards = cards.length;
     const imageCards = cards.filter(c => c.hasImage).length;
 
@@ -4322,9 +4325,24 @@ async function buildAIContextSnapshot(toolRegistry) {
     );
     const selectedCards = cards.filter(c => selectedIds.has(c.id));
 
-    const tagInfo = typeof toolRegistry.listAllTags === 'function'
+    const tagInfo = typeof toolRegistry?.listAllTags === 'function'
       ? await toolRegistry.listAllTags()
-      : null;
+      : (() => {
+          const tagCounts = new Map();
+          for (const card of cards) {
+            if (card.tags && Array.isArray(card.tags)) {
+              for (const tag of card.tags) {
+                tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+              }
+            }
+          }
+
+          const tags = Array.from(tagCounts.entries())
+            .map(([tag, count]) => ({ tag, count }))
+            .sort((a, b) => b.count - a.count);
+
+          return { tags };
+        })();
     const topTags = (tagInfo?.tags || [])
       .slice(0, 5)
       .map(t => `${t.tag} (${t.count})`)
@@ -4358,6 +4376,33 @@ async function buildAIContextSnapshot(toolRegistry) {
     return null;
   }
 }
+
+const AI_INTENTS = [
+  {
+    id: 'ask-anything',
+    label: 'Ställ en egen fråga',
+    description: 'Starta en tom chatt och skriv själv',
+    prompt: ''
+  },
+  {
+    id: 'summarize-selection',
+    label: 'Sammanfatta markerade',
+    description: 'Kort sammanfattning av markerade kort',
+    prompt: 'Sammanfatta de markerade korten kortfattat. Fokusera på nyckelidéer och beslut.'
+  },
+  {
+    id: 'next-steps',
+    label: 'Föreslå nästa steg',
+    description: 'Actionlista baserad på markerade kort',
+    prompt: 'Föreslå 3–5 konkreta nästa steg baserat på markerade kort och deras tags. Svara kort.'
+  },
+  {
+    id: 'agenda',
+    label: 'Skapa agenda',
+    description: 'Snabb mötesagenda från dagens fokus',
+    prompt: 'Skapa en kort agenda (5 punkter) baserad på markerade kort och de vanligaste taggarna just nu.'
+  }
+];
 
 /**
  * Show AI Assistant chooser (Gemini or ChatGPT)
@@ -4402,8 +4447,8 @@ async function showAIChooser() {
       <h2 style="margin: 0 0 20px 0; text-align: center; color: var(--text-primary);">
         Välj AI-assistent
       </h2>
-      <p style="margin: 0 0 30px 0; text-align: center; color: var(--text-secondary);">
-        Tryck <kbd>G</kbd> för Gemini eller <kbd>C</kbd> för ChatGPT
+      <p style="margin: 0 12px 18px 12px; text-align: center; color: var(--text-secondary);">
+        Välj modell och startintention. Förhandsvisningen nedan visar vilken tavla-kontekst som skickas (kompakt för att spara tokens).
       </p>
       ${lastChoice ? `<p style="margin: -12px 0 24px 0; text-align: center; color: var(--text-secondary); font-size: 13px;">Senaste valda: <strong>${lastChoice === 'gemini' ? 'Gemini' : 'ChatGPT'}</strong> (startar direkt om du väljer samma igen)</p>` : ''}
       <div style="display: flex; gap: 16px; justify-content: center;">
@@ -4446,6 +4491,20 @@ async function showAIChooser() {
           <div style="font-size: 12px; color: var(--text-secondary);">Tryck C</div>
         </button>
       </div>
+      <div style="margin-top: 20px; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-secondary);">
+        <div style="font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <span>📌 Kontextextrakt (kort)</span>
+          <span style="font-size: 12px; color: var(--text-secondary);">Skickas vid start</span>
+        </div>
+        <div id="aiContextPreview" style="white-space: pre-line; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">🔄 Bygger kontext…</div>
+      </div>
+      <div style="margin-top: 16px;">
+        <div style="font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <span>🎯 Startintention</span>
+          <span style="font-size: 12px; color: var(--text-secondary);">Håller svaren korta och sparar tokens</span>
+        </div>
+        <div id="aiIntentOptions" style="display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));"></div>
+      </div>
     `;
 
     overlay.appendChild(dialog);
@@ -4454,10 +4513,56 @@ async function showAIChooser() {
     const geminiBtn = document.getElementById('chooseGemini');
     const chatgptBtn = document.getElementById('chooseChatGPT');
 
+    let selectedIntent = AI_INTENTS[0];
+    let cachedContext = null;
+
+    const renderIntents = () => {
+      const intentContainer = dialog.querySelector('#aiIntentOptions');
+      intentContainer.innerHTML = '';
+
+      AI_INTENTS.forEach(intent => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.cssText = `
+          text-align: left;
+          padding: 10px 12px;
+          border-radius: 10px;
+          border: 1px solid ${selectedIntent.id === intent.id ? 'var(--accent-color)' : 'var(--border-color)'};
+          background: ${selectedIntent.id === intent.id ? 'rgba(139, 92, 246, 0.12)' : 'var(--bg-secondary)'};
+          cursor: pointer;
+          transition: all 0.15s ease;
+          color: var(--text-primary);
+        `;
+
+        btn.innerHTML = `
+          <div style="font-weight: 600; margin-bottom: 4px;">${intent.label}</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">${intent.description}</div>
+        `;
+
+        btn.addEventListener('click', () => {
+          selectedIntent = intent;
+          renderIntents();
+        });
+
+        intentContainer.appendChild(btn);
+      });
+    };
+
+    renderIntents();
+
     const cleanup = (choice) => {
       document.removeEventListener('keydown', handleKey);
       overlay.remove();
-      resolve(choice);
+      if (!choice) {
+        resolve(null);
+        return;
+      }
+
+      resolve({
+        model: choice,
+        intent: selectedIntent,
+        contextSummary: cachedContext
+      });
     };
 
     const handleKey = (e) => {
@@ -4489,13 +4594,25 @@ async function showAIChooser() {
         btn.style.transform = 'scale(1)';
       });
     });
+
+    // Build context preview
+    const contextPreviewEl = dialog.querySelector('#aiContextPreview');
+    buildAIContextSnapshot()
+      .then(summary => {
+        cachedContext = summary;
+        contextPreviewEl.textContent = summary || 'Kunde inte bygga en kort kontext. Starta ändå – modellen får markeringar om du har valt kort.';
+      })
+      .catch(() => {
+        contextPreviewEl.textContent = 'Kunde inte bygga en kort kontext (sparar tokens genom att hoppa över).';
+      });
   });
 }
 
 /**
  * Show Gemini Assistant dialog
  */
-async function showGeminiAssistant() {
+async function showGeminiAssistant(options = {}) {
+  const { intent = null, prefetchedContextSummary = null } = options;
   // IMPORTANT: Ensure any chooser overlays are removed when opening the panel
   const oldChooserOverlays = document.querySelectorAll('.ai-chooser-overlay');
   oldChooserOverlays.forEach(overlay => overlay.remove());
@@ -4702,7 +4819,7 @@ async function showGeminiAssistant() {
 
       // Auto-send if we have text
       if (queryInput.value.trim()) {
-        setTimeout(() => handleSend(), 300);
+        setTimeout(() => sendPrompt(), 300);
       }
     };
 
@@ -6079,10 +6196,12 @@ async function showGeminiAssistant() {
   const injectContextSnapshot = async () => {
     if (conversationHistory.length > 0) return;
 
-    const contextSummary = await buildAIContextSnapshot(toolRegistry);
+    const contextSummary = prefetchedContextSummary || await buildAIContextSnapshot(toolRegistry);
     if (contextSummary) {
-      addSystemMessage('📌 Förser AI:n med aktuell tavla-kontekst.');
+      addSystemMessage('📌 Förser AI:n med aktuell tavla-kontekst (komprimerad).');
+      addSystemMessage('🪙 Token-sparläge: svaren ska vara korta och återanvända kontexten ovan.');
       conversationHistory.push({ role: 'system', text: contextSummary });
+      conversationHistory.push({ role: 'system', text: 'Svara kortfattat (max ~120 ord). Återanvänd kontexten ovan och kalla på verktyg istället för långa resonemang.' });
       persistHistory();
     }
   };
@@ -6090,8 +6209,8 @@ async function showGeminiAssistant() {
   await injectContextSnapshot();
 
   // Ask handler - now with chat interface
-  const handleSend = async () => {
-    const query = queryInput.value.trim();
+  const sendPrompt = async (promptText = null) => {
+    const query = (promptText ?? queryInput.value).trim();
     if (!query) return;
 
     // Add user message to chat
@@ -6099,8 +6218,10 @@ async function showGeminiAssistant() {
     conversationHistory.push({ role: 'user', text: query });
     persistHistory();
 
-    // Clear input and disable button
-    queryInput.value = '';
+    // Clear input and disable button if this is a manual send
+    if (!promptText) {
+      queryInput.value = '';
+    }
     askBtn.disabled = true;
     askBtn.textContent = '...';
 
@@ -6134,21 +6255,26 @@ async function showGeminiAssistant() {
     }
   };
 
-  askBtn.addEventListener('click', handleSend);
+  askBtn.addEventListener('click', () => sendPrompt());
 
   // Enter to submit
   queryInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSend();
+      sendPrompt();
     }
   });
+
+  if (intent?.prompt) {
+    sendPrompt(intent.prompt);
+  }
 }
 
 /**
  * Show ChatGPT Assistant dialog
  */
-async function showChatGPTAssistant() {
+async function showChatGPTAssistant(options = {}) {
+  const { intent = null, prefetchedContextSummary = null } = options;
   // IMPORTANT: Ensure any chooser overlays are removed when opening the panel
   const oldChooserOverlays = document.querySelectorAll('.ai-chooser-overlay');
   oldChooserOverlays.forEach(overlay => overlay.remove());
@@ -7333,10 +7459,12 @@ async function showChatGPTAssistant() {
     const injectContextSnapshot = async () => {
       if (conversationHistory.length > 0) return;
 
-      const contextSummary = await buildAIContextSnapshot(toolRegistry);
+      const contextSummary = prefetchedContextSummary || await buildAIContextSnapshot(toolRegistry);
       if (contextSummary) {
-        addSystemMessage('📌 Förser AI:n med aktuell tavla-kontekst.');
+        addSystemMessage('📌 Förser AI:n med aktuell tavla-kontekst (komprimerad).');
+        addSystemMessage('🪙 Token-sparläge: svara kort och återanvänd kontexten.');
         conversationHistory.push({ role: 'system', text: contextSummary });
+        conversationHistory.push({ role: 'system', text: 'Svara kortfattat (max ~120 ord). Använd verktyg istället för långa utläggningar.' });
         persistHistory();
       }
     };
@@ -7344,15 +7472,17 @@ async function showChatGPTAssistant() {
     await injectContextSnapshot();
 
     // Ask handler
-    const handleSend = async () => {
-      const query = queryInput.value.trim();
+    const sendPrompt = async (promptText = null) => {
+      const query = (promptText ?? queryInput.value).trim();
       if (!query) return;
 
       addMessage(query, true);
       conversationHistory.push({ role: 'user', text: query });
       persistHistory();
 
-      queryInput.value = '';
+      if (!promptText) {
+        queryInput.value = '';
+      }
       askBtn.disabled = true;
       askBtn.textContent = '...';
 
@@ -7380,14 +7510,18 @@ async function showChatGPTAssistant() {
       }
     };
 
-  askBtn.addEventListener('click', handleSend);
+  askBtn.addEventListener('click', () => sendPrompt());
 
   queryInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSend();
+      sendPrompt();
     }
   });
+
+  if (intent?.prompt) {
+    sendPrompt(intent.prompt);
+  }
 }
 
 /**

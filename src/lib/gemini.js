@@ -752,6 +752,7 @@ export async function executeChatGPTAgent(query, tools, toolRegistry, chatHistor
     }
 
     const url = 'https://api.openai.com/v1/chat/completions';
+    const chatGPTModel = 'gpt-4o';
 
     // Convert Gemini tools format to OpenAI tools format
     const openaiTools = tools[0].functionDeclarations.map(func => ({
@@ -906,7 +907,7 @@ Var kreativ och proaktiv:
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: chatGPTModel,
             messages: messages,
             tools: openaiTools,
             tool_choice: 'auto'
@@ -970,7 +971,7 @@ Var kreativ och proaktiv:
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: 'gpt-4o-mini',
+                model: chatGPTModel,
                 messages: messages,
                 tools: openaiTools,
                 tool_choice: 'auto'
