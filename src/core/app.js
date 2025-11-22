@@ -1,5 +1,6 @@
 import { initCanvas } from '../lib/canvas.js';
 import { initStorage } from '../lib/storage.js';
+import { applyThemeFromState } from '../ui/theme.js';
 import { renderColumnView } from '../ui/view-switcher.js';
 
 /**
@@ -60,18 +61,12 @@ function applyDeviceOptimizations(state) {
  * Called BEFORE canvas initialization to ensure cards render with correct theme
  */
 function applySavedTheme(state) {
-  const body = document.body;
-  const savedTheme = localStorage.getItem('theme') || state.theme;
-  if (savedTheme && savedTheme !== 'light') {
-    body.classList.remove('dark-theme', 'eink-theme', 'sepia-theme');
-    if (savedTheme === 'dark') {
-      body.classList.add('dark-theme');
-    } else if (savedTheme === 'eink') {
-      body.classList.add('eink-theme');
-    }
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
     state.theme = savedTheme;
     console.log('Applied saved theme:', savedTheme);
   }
+  applyThemeFromState(state);
 }
 
 /**
