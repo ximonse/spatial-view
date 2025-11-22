@@ -1,6 +1,7 @@
 import { importImage } from '../lib/canvas.js';
 import { toggleView } from './view-switcher.js';
 import { getCardImageSrc } from '../utils/card-images.js';
+import { applyThemeFromState, getNextTheme } from './theme.js';
 
 export function initToolbar(state) {
   const viewToggle = document.getElementById('btn-view-toggle');
@@ -20,48 +21,15 @@ export function initToolbar(state) {
 
   window.addEventListener('toggleTheme', () => toggleTheme(state));
 
+  updateThemeButtonTitle(state.theme);
   applyUIMode(state);
 }
 
 export async function toggleTheme(state) {
-  const body = document.body;
-
-  // Get current theme from class
-  let currentTheme = 'light';
-  if (body.classList.contains('dark-theme')) currentTheme = 'dark';
-  else if (body.classList.contains('eink-theme')) currentTheme = 'eink';
-
-  const themes = ['light', 'dark', 'eink'];
-  const currentIndex = themes.indexOf(currentTheme);
-  const nextIndex = (currentIndex + 1) % themes.length;
-  const nextTheme = themes[nextIndex];
-
-  // Remove all theme classes
-  body.classList.remove('dark-theme', 'eink-theme', 'sepia-theme');
-
-  // Add new theme class (except for light which is default)
-  if (nextTheme === 'dark') {
-    body.classList.add('dark-theme');
-  } else if (nextTheme === 'eink') {
-    body.classList.add('eink-theme');
-  }
-
-  // Also set data attribute for consistency
-  body.setAttribute('data-theme', nextTheme);
-  localStorage.setItem('theme', nextTheme);
+  const nextTheme = getNextTheme(state.theme);
   state.theme = nextTheme;
-
-  // Update button text
-  const themeBtn = document.getElementById('btn-theme-toggle');
-  if (themeBtn) {
-    // The text is now removed, but we could update a title/tooltip here
-    const themeTitles = {
-      'light': 'Byt till mörkt tema',
-      'dark': 'Byt till e-ink tema',
-      'eink': 'Byt till ljust tema'
-    };
-    themeBtn.title = themeTitles[nextTheme] || 'Byt tema';
-  }
+  applyThemeFromState(state);
+  updateThemeButtonTitle(nextTheme);
 
   // Update card appearances based on new theme
   const { updateCardShadows, updateCardFills, updateCardStrokes } = await import('../lib/canvas.js');
@@ -70,6 +38,19 @@ export async function toggleTheme(state) {
   updateCardStrokes();
 
   console.log(`Theme changed to: ${nextTheme}`);
+}
+
+function updateThemeButtonTitle(theme) {
+  const themeBtn = document.getElementById('btn-theme-toggle');
+  if (!themeBtn) return;
+
+  const themeTitles = {
+    'light': 'Byt till mörkt tema',
+    'dark': 'Byt till e-ink tema',
+    'eink': 'Byt till ljust tema'
+  };
+
+  themeBtn.title = themeTitles[theme] || 'Byt tema';
 }
 
 export function toggleUIMode(state) {
