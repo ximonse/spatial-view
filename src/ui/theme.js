@@ -17,7 +17,7 @@ export function applyThemeFromState(state) {
 
   const body = document.body;
 
-  body.classList.remove('dark-theme', 'eink-theme', 'sepia-theme');
+  body.classList.remove('dark-theme', 'eink-theme');
   if (theme === 'dark') {
     body.classList.add('dark-theme');
   } else if (theme === 'eink') {

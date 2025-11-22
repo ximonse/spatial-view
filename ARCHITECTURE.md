@@ -65,11 +65,45 @@ import { renderTextCard, renderImageCard } from './rendering.js';
 import { createInlineEditor } from './editing.js';
 ```
 
-## Nuvarande status (2025-11-09)
+## Nuvarande status (2025-11-22)
 
-### Fas 1: Organisering med sektioner ✅ KLART
+### ⚠️ Viktig information om faktisk arkitektur
 
-**canvas.js** är nu organiserat i 13 tydliga sektioner:
+**MÅLBILD vs VERKLIGHET:**
+- **Målbild** (dokumenterad ovan): Modulär struktur med filer < 300 rader
+- **Verklighet**: Majoriteten av koden finns fortfarande i `src/canvas/core.js` (8023 rader)
+
+**Varför denna avvikelse?**
+
+En stor refactoring påbörjades som skapade modulfiler i `src/canvas/`, `src/ui/`, och `src/utils/`, men implementationen blev inte fullständig. De flesta "moduler" är tunt omslag (thin wrappers) som bara re-exporterar funktioner från `core.js`.
+
+**Faktisk filstruktur:**
+
+```
+src/
+├── main.js              (~100 rader - app init)
+├── canvas/
+│   ├── core.js          (8023 rader ⚠️ - huvudsaklig canvas-logik)
+│   ├── rendering.js     (thin wrapper → core.js)
+│   ├── editing.js       (thin wrapper → core.js)
+│   ├── interactions.js  (thin wrapper → core.js)
+│   ├── clipboard.js     (thin wrapper → core.js)
+│   └── search.js        (thin wrapper → core.js)
+├── ui/
+│   ├── toolbar.js       (faktisk implementation ✓)
+│   ├── theme.js         (faktisk implementation ✓)
+│   └── view-switcher.js (faktisk implementation ✓)
+├── lib/
+│   ├── storage.js       (faktisk implementation ✓)
+│   ├── gemini.js        (faktisk implementation ✓)
+│   └── calendar-sync.js (faktisk implementation ✓)
+└── utils/
+    └── image-processing.js (faktisk implementation ✓)
+```
+
+### Vad fungerar bra idag
+
+**core.js är organiserat i 13 tydliga sektioner:**
 1. Global State & Configuration
 2. Rendering (Cards, Colors, Visual Elements)
 3. Card Creation & Editing (Dialogs, Inline Editor, Touch Menus)
@@ -84,43 +118,61 @@ import { createInlineEditor } from './editing.js';
 12. UI Buttons & Theme (Fit All, Add Menu, Theme Toggle)
 13. Arrangements & Keyboard Handlers
 
-**Hur du navigerar:**
-- Använd Ctrl+F för att söka efter sektion markers: `// === SECTION X:`
-- Varje sektion har en stor banner som är lätt att se
+**Navigera i core.js:**
+- Använd Ctrl+F för att söka efter: `// === SECTION X:`
+- Varje sektion har en stor banner
 - Header-kommentaren listar alla sektioner
 
-**Fördelar:**
-- ✅ Lättare att hitta funktioner
+**Fördelar med nuvarande struktur:**
+- ✅ Lättare att hitta funktioner än i en oorganiserad fil
 - ✅ Tydlig struktur
-- ✅ Ingen breaking changes
-- ✅ Fungerar direkt
+- ✅ Inga breaking changes
+- ✅ Fungerar stabilt
 
-### Nästa steg
+### Framtida migration (när tid finns)
 
-#### Fas 2: Flytta ut fristående helpers (Frivilligt)
-När vi behöver lägga till funktionalitet kan vi överväga att flytta ut:
-- Search helpers (matchWithWildcard, checkProximity, evaluateBooleanQuery)
-- Color mapping utilities
-- Små, isolerade funktioner utan dependencies
+#### Fas 1: Faktisk modularisering av core.js
+För att nå målbilden behövs:
+1. Flytta rendering-logik till egen `rendering.js` (inte bara re-export)
+2. Flytta editing-logik till egen `editing.js`
+3. Flytta interaction-logik till egen `interactions.js`
+4. Hantera global state med dependency injection eller context
 
-#### Fas 3: Full modularisering (Framtida arbete)
-Om canvas.js växer ytterligare (>5000 rader), överväg:
-- Skapa `CanvasManager` klass med state
-- Dependency injection för stage, layer
-- Dela upp i separata moduler
+**Utmaning:** Tight coupling mellan funktioner och global state (stage, layer, selectedCards, etc.)
 
-**Varför väntar vi?**
-- Tight coupling mellan funktioner och global state
-- Risk för buggar vid stor refactoring
-- Nuvarande organisation är tillräckligt bra
+#### Fas 2: State management
+Överväg `CanvasManager` klass för att kapsla in global state:
+```javascript
+class CanvasManager {
+  constructor(stage, layer) {
+    this.stage = stage;
+    this.layer = layer;
+    this.selectedCards = new Set();
+    // ... etc
+  }
+}
+```
 
 ## Riktlinjer framåt
 
+### För tillägg i core.js (nuvarande approach)
 1. **Innan du lägger till kod**: Kontrollera filstorlek med `wc -l`
-2. **Om fil > 300 rader**: Lägg till ny sektion eller diskutera refactoring
-3. **Följ sektionerna**: Lägg ny kod i rätt sektion
-4. **Dokumentera**: Uppdatera header-kommentaren när du lägger till funktioner
+2. **Följ sektionerna**: Lägg ny kod i rätt sektion (1-13)
+3. **Dokumentera**: Uppdatera header-kommentaren när du lägger till funktioner
+4. **Om core.js > 10000 rader**: Diskutera faktisk modularisering
+
+### För ny funktionalitet (nya filer)
+1. **Fråga**: Är detta en fristående modul? (som storage.js, gemini.js)
+2. **Om ja**: Skapa egen fil i `lib/` eller `utils/`
+3. **Om nej**: Lägg till i rätt sektion i core.js
+4. **Importera**: Använd named exports, inte default exports
+
+### Pre-commit hook
+Projektet har en 300-radsgräns i pre-commit hook. Om du behöver bypassa (för core.js):
+```bash
+git commit --no-verify
+```
 
 ---
 
-**Kom ihåg**: När du lägger till en funktion, lägg den i rätt modul från början!
+**Kom ihåg**: Målbilden är fortfarande 300-raders-moduler, men vi prioriterar stabilitet och fungerade features över perfekt arkitektur.

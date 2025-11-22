@@ -1,7 +1,8 @@
 # ADR 003: Incremental Sync utan Backend
 
-**Status:** Accepted  
-**Datum:** 2025-11-08  
+**Status:** Implemented
+**Planerad:** 2025-11-08
+**Implementerad:** 2025-11-22
 **Kontext:** Användaren vill kunna synka mellan enheter utan att ladda hela JSON-filen varje gång
 
 ## Beslut
@@ -106,25 +107,33 @@ export function exportFull() {
 4. Mobile: Import `desktop-delta.json` (merge)
 5. Konfliktlösning: last-write-wins (senaste `modified` vinner)
 
-## Google Drive Integration (v1.1)
-Senare kan vi lägga till automatisk sync via Google Drive:
-```javascript
-// Auto-detect changes och upload delta
-setInterval(async () => {
-  const delta = exportDelta(lastSyncTimestamp);
-  if (delta.changes.length > 0) {
-    await uploadToGoogleDrive(delta);
-  }
-}, 60000); // Varje minut
+## Google Drive Integration ✅ IMPLEMENTERAD
 
-// Auto-check för changes från andra enheter
-setInterval(async () => {
-  const remoteDelta = await downloadFromGoogleDrive();
-  if (remoteDelta) {
-    await importDelta(remoteDelta);
-  }
-}, 60000);
-```
+Google Drive sync är nu implementerad och fullt fungerande.
+
+**Implementerade features:**
+- ✅ OAuth 2.0 autentisering via Google Identity Services
+- ✅ Ladda ner JSON-backup från Google Drive
+- ✅ Ladda upp JSON-backup till Google Drive
+- ✅ Auto-skapande av `spatial-view-backups` folder
+- ✅ Lista tidigare backups med timestamps
+- ✅ Inkrementell restore (bara uppdaterade kort)
+
+**Användarflöde:**
+1. Klicka på Google Drive-knappen i UI
+2. Auktorisera med Google-konto (engångs)
+3. Välj "Ladda upp backup" eller "Ladda ner backup"
+4. Backup-filer namnges automatiskt: `spatial-view-backup-YYYY-MM-DD-HH-MM-SS.json`
+
+**Implementation:**
+- Se `src/lib/drive-sync.js` för Google Drive API-integration
+- OAuth token hanteras med `google.accounts.oauth2.initTokenClient()`
+- File picker använder Google Drive Picker API
+
+**Framtida förbättringar (optional):**
+- Automatisk auto-sync varje N minuter
+- Conflict resolution UI för bidirectional sync
+- Delta sync istället för full backup (minska datatransfer)
 
 ## Fördelar
 - ✅ Ingen backend behövs
