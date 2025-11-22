@@ -52,23 +52,19 @@ export async function renderColumnView(searchQuery = '') {
   }
 
   // Filter by search query if provided
-  if (searchQuery && searchQuery.trim()) {
-    const query = searchQuery.trim().toLowerCase();
+  const { evaluateBooleanQuery, buildCardSearchText, normalizeSearchQuery } = await import('../lib/canvas.js');
+  const normalizedQuery = normalizeSearchQuery(searchQuery);
 
-    // Import boolean search function
-    const { evaluateBooleanQuery } = await import('../lib/canvas.js');
-
+  if (normalizedQuery) {
     cards = cards.filter(card => {
-      const text = card.text || '';
-      const backText = card.backText || '';
-      const combinedText = (text + ' ' + backText).toLowerCase();
+      const searchableText = buildCardSearchText(card);
 
       // Use boolean search (same as board view)
-      return evaluateBooleanQuery(query, combinedText);
+      return evaluateBooleanQuery(normalizedQuery, searchableText);
     });
 
     if (cards.length === 0) {
-      cardList.innerHTML = `<div style="padding: 40px; text-align: center; color: #999;">Inga kort matchade "${searchQuery}"</div>`;
+      cardList.innerHTML = `<div style="padding: 40px; text-align: center; color: #999;">Inga kort matchade "${searchQuery?.trim() ?? ''}"</div>`;
       return;
     }
   }

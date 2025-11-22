@@ -4,6 +4,8 @@ export {
   updateCardShadows,
   updateCardStrokes,
   fitAllCards,
+  normalizeSearchQuery,
+  buildCardSearchText,
   matchWithWildcard,
   checkProximity,
   evaluateBooleanQuery,
