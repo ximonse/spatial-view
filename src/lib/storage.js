@@ -249,8 +249,8 @@ export async function exportDelta(sinceTimestamp = 0) {
  */
 export async function importData(jsonData) {
   if (jsonData.type === 'full') {
-    // Full import - add all cards
-    await db.cards.bulkAdd(jsonData.cards);
+    // Full import - use bulkPut to update existing or add new based on ID
+    await db.cards.bulkPut(jsonData.cards);
   } else if (jsonData.type === 'delta') {
     // Delta import - merge changes
     for (const change of jsonData.changes) {

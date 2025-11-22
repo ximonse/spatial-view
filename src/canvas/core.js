@@ -2997,23 +2997,20 @@ export async function importCanvas() {
         const text = await file.text();
         const data = JSON.parse(text);
 
-        // Import cards
-        const { createCard } = await import('./storage.js');
+        // Import cards using bulkPut
+        const { db } = await import('./storage.js');
 
         if (data.cards && Array.isArray(data.cards)) {
-          for (let i = 0; i < data.cards.length; i++) {
-            const card = data.cards[i];
-            // Create each card in storage (without the id to avoid conflicts)
-            const { id, ...cardWithoutId } = card;
+          // Add import metadata to all cards
+          const cardsToImport = data.cards.map((card, i) => ({
+            ...card,
+            imported: true,
+            importedAt: new Date().toISOString(),
+            importedFrom: file.name,
+            importBatchIndex: i
+          }));
 
-            // Add import metadata
-            await createCard(cardWithoutId, {
-              imported: true,
-              importedAt: new Date().toISOString(),
-              importedFrom: file.name,
-              importBatchIndex: i
-            });
-          }
+          await db.cards.bulkPut(cardsToImport);
 
           // Reload canvas to show imported cards
           await reloadCanvas();

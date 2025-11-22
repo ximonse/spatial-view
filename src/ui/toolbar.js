@@ -2,6 +2,7 @@ import { importImage } from '../lib/canvas.js';
 import { toggleView } from './view-switcher.js';
 import { getCardImageSrc } from '../utils/card-images.js';
 import { applyThemeFromState, getNextTheme } from './theme.js';
+import { db } from '../lib/storage.js';
 
 export function initToolbar(state) {
   const viewToggle = document.getElementById('btn-view-toggle');
@@ -282,23 +283,24 @@ export async function handleRestoreFromBlob(blob) {
       }
     }
 
-    // Import all cards
-    let importedCount = 0;
-    for (const cardData of jsonData.cards) {
+    // Import all cards using bulkPut (updates existing or adds new based on ID)
+    const cardsToImport = jsonData.cards.map(cardData => {
       if (cardData.id && imageFiles[cardData.id]) {
-        cardData.image = { base64: imageFiles[cardData.id] };
+        return {
+          ...cardData,
+          image: { base64: imageFiles[cardData.id] }
+        };
       }
+      return cardData;
+    });
 
-      const { id, ...cardWithoutId } = cardData;
-      await createCard(cardWithoutId);
-      importedCount++;
-    }
+    await db.cards.bulkPut(cardsToImport);
 
     // Reload canvas
     await reloadCanvas();
 
-    console.log(`Restored ${importedCount} cards from blob`);
-    return importedCount;
+    console.log(`Restored ${cardsToImport.length} cards from blob`);
+    return cardsToImport.length;
 
   } catch (error) {
     console.error('Restore from blob failed:', error);
@@ -374,29 +376,27 @@ export async function handleRestoreBackup() {
           return;
         }
 
-        // Import cards
-        let importedCount = 0;
-        for (const cardData of jsonData.cards) {
+        // Import cards using bulkPut (updates existing or adds new based on ID)
+        const cardsToImport = jsonData.cards.map(cardData => {
           // If an image exists in the images folder, attach it to the card
           if (cardData.id && imageFiles[cardData.id]) {
-            cardData.image = {
-              base64: imageFiles[cardData.id]
+            return {
+              ...cardData,
+              image: {
+                base64: imageFiles[cardData.id]
+              }
             };
           }
+          return cardData;
+        });
 
-          // Remove the old ID so a new one is generated
-          const { id, ...cardWithoutId } = cardData;
-
-          await createCard(cardWithoutId);
-          importedCount++;
-        }
-
-        console.log(`Restored ${importedCount} cards`);
+        await db.cards.bulkPut(cardsToImport);
+        console.log(`Restored ${cardsToImport.length} cards`);
 
         // Reload canvas
         await reloadCanvas();
 
-        alert(`✅ Backup återställd!\n\n${importedCount} kort importerade.`);
+        alert(`✅ Backup återställd!\n\n${cardsToImport.length} kort importerade.`);
 
       } catch (error) {
         console.error('Restore failed:', error);
