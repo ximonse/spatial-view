@@ -43,6 +43,7 @@ import {
 import { addRecentCardColor } from '../utils/recent-card-colors.js';
 import { getCardColorValue, getColorOptionsForTheme, useColoredCards } from '../utils/card-colors.js';
 import { registerCommand, unregisterCommand, executeCommandFromEvent, getCommands, formatKeyBindings } from '../lib/command-registry.js';
+import { updateStats } from '../ui/stats-display.js';
 
 // ============================================================================
 // SECTION 1: GLOBAL STATE & CONFIGURATION
@@ -70,6 +71,10 @@ let pendingCreateMerge = new Map(); // cardId -> create action
 // Clipboard for copy/paste
 let clipboard = [];
 const registeredCanvasCommands = new Set();
+
+// Search highlighting state - persists across reloadCanvas
+let activeSearchQuery = '';
+let matchingCardIds = new Set();
 
 // ============================================================================
 // SECTION 2: RENDERING (Cards, Colors, Visual Elements)
@@ -194,11 +199,41 @@ export async function initCanvas() {
  */
 async function loadCards() {
   const cards = await getAllCards();
-  
+
   for (const card of cards) {
     renderCard(card);
   }
-  
+
+  // Restore search highlighting if there was an active search
+  if (activeSearchQuery && matchingCardIds.size > 0) {
+    console.log('[loadCards] Restoring search highlighting for:', matchingCardIds.size, 'cards');
+    const allGroups = layer.getChildren().filter(node => node.getAttr('cardId'));
+
+    allGroups.forEach(group => {
+      const cardId = group.getAttr('cardId');
+      const background = group.findOne('Rect');
+      const isMatch = matchingCardIds.has(cardId);
+
+      if (isMatch) {
+        // Matching card: mark and full opacity
+        group.opacity(1);
+        group.addName('selected');
+        if (background) {
+          background.stroke('#2196F3');
+          background.strokeWidth(3);
+        }
+      } else {
+        // Non-matching card: fade and remove selection
+        group.opacity(0.3);
+        group.removeName('selected');
+        if (background) {
+          background.stroke('#e0e0e0');
+          background.strokeWidth(1);
+        }
+      }
+    });
+  }
+
   layer.batchDraw();
 }
 
@@ -269,6 +304,7 @@ function renderCard(cardData) {
     }
 
     layer.batchDraw();
+    refreshStats();
   });
 
   // Right-click context menu
@@ -1850,6 +1886,8 @@ async function handleDeleteCard(cardId) {
     cardGroups.delete(cardId);
     layer.batchDraw();
   }
+
+  refreshStats();
 }
 
 // ============================================================================
@@ -8283,6 +8321,8 @@ export async function searchCards(query) {
   if (!normalizedQuery) {
     // Clear search - reset all cards
     console.log('[searchCards] Clearing search, resetting all cards');
+    activeSearchQuery = '';
+    matchingCardIds.clear();
     allGroups.forEach(group => {
       group.opacity(1);
       const background = group.findOne('Rect');
@@ -8311,6 +8351,10 @@ export async function searchCards(query) {
       matchingCards.add(card.id);
     }
   });
+
+  // Save search state globally so it persists across reloadCanvas
+  activeSearchQuery = query;
+  matchingCardIds = new Set(matchingCards);
 
   console.log('[searchCards] Matching card IDs:', Array.from(matchingCards));
 
@@ -8568,6 +8612,7 @@ async function togglePinSelectedCards() {
 
   console.log(`${anyPinned ? 'Unpinned' : 'Pinned'} ${selectedGroups.length} cards`);
   layer.batchDraw();
+  refreshStats();
 }
 
 // ============================================================================
@@ -9266,4 +9311,22 @@ export function deselectAllCards() {
 
   layer.batchDraw();
   console.log('All cards deselected');
+  refreshStats();
+}
+
+/**
+ * Refresh and display canvas statistics
+ */
+export function refreshStats() {
+  if (!layer) return;
+
+  const selected = layer.find('.selected').length;
+  const pinned = layer.find('.pinned').length;
+  const total = layer.find('Group').filter(node => node.getAttr('cardId')).length;
+
+  updateStats({
+    selected,
+    pinned,
+    total
+  });
 }

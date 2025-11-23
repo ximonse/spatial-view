@@ -1,6 +1,5 @@
 /* Import themes FIRST (CSS requirement - must be before ALL other code including comments) */
 @import './assets/theme-dark.css';
-@import './assets/theme-sepia.css';
 @import './assets/theme-eink.css';
 @import './assets/cards-colors.css';
 
@@ -305,14 +304,47 @@ button:active {
   border: 1px solid rgba(0, 0, 0, 0.1);
   padding: 8px 16px;
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
   backdrop-filter: blur(10px);
 }
 
+/* Stats Display - non-blocking overlay */
+#stats-display {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  color: #000;
+  z-index: 998;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  padding: 8px 12px;
+  border-radius: 4px;
+  pointer-events: none; /* Låt klick gå igenom */
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  max-width: 250px;
+  line-height: 1.5;
+}
+
+#stats-display.visible {
+  opacity: 1;
+}
+
+.dark-theme #stats-display {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.eink-theme #stats-display {
+  border-color: #000;
+  border-width: 2px;
+}
+
 #floating-header:hover {
   background: rgba(255, 255, 255, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Dark theme floating header */
@@ -320,12 +352,10 @@ button:active {
   color: #fff;
   background: rgba(30, 30, 30, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .dark-theme #floating-header:hover {
   background: rgba(40, 40, 40, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 /* Info overlay */
@@ -354,7 +384,6 @@ button:active {
   max-width: 600px;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 #info-content h2 {

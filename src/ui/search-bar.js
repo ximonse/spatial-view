@@ -56,7 +56,7 @@ export function initSearchBar(state) {
       }
     };
 
-    registerCommand({ id: 'focus-search', handler: focusHandler, allowInInputs: true });
+    registerCommand({ id: 'focus-search', handler: focusHandler, allowInInputs: false });
     registeredIds.add('focus-search');
     registerCommand({
       id: 'clear-selection',

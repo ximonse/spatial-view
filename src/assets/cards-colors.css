@@ -42,7 +42,6 @@
             border: 2px solid #ddd;
             border-radius: 8px;
             padding: 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             z-index: 2000;
         }
         
@@ -98,11 +97,11 @@
         
         /* Ensure numbers are visible with stronger contrast */
         .color-picker-dot {
-            text-shadow: 0 0 3px rgba(0,0,0,0.7);
+            font-weight: bold;
         }
-        
+
         .dark-theme .color-picker-dot {
-            text-shadow: 0 0 3px rgba(0,0,0,0.9);
+            font-weight: bold;
         }
         
         /* Color picker dot colors - Light theme */
