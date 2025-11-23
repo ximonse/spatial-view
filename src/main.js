@@ -9,6 +9,7 @@ import { initToolbar, handleDriveSync, handleRestoreBackup, handleRestoreFromBlo
 import { initSearchBar } from './ui/search-bar.js';
 import { initViewSwitcher } from './ui/view-switcher.js';
 import { setContextResolver } from './lib/command-registry.js';
+import { initStatsDisplay } from './ui/stats-display.js';
 
 // App state
 const state = {
@@ -48,6 +49,7 @@ async function start() {
   initToolbar(state);
   initSearchBar(state);
   initInfoOverlay();
+  initStatsDisplay();
 }
 
 // Start app when DOM is ready

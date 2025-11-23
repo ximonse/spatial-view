@@ -113,7 +113,7 @@ Dessa fält sätts ALLTID automatiskt av `createCard()`:
 
 #### B) Klistra in från clipboard (`pasteImageFromClipboard()`)
 
-**Trigger:** `Ctrl+V` med bild i clipboard
+**Trigger:** `Ctrl+V` med bild i clipboard *** verkar inte funka
 
 **Process:**
 1. Läs från `navigator.clipboard.read()`
@@ -144,7 +144,7 @@ Dessa fält sätts ALLTID automatiskt av `createCard()`:
 
 #### A) Duplicera valda kort (`duplicateSelectedCards()`)
 
-**Trigger:** `Ctrl+D` eller högerklicksmeny
+**Trigger:** `Ctrl+D` eller högerklicksmeny ctrl+d fuinkar icke 
 
 **Fält som KOPIERAS:**
 ```javascript

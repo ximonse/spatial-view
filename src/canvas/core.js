@@ -562,11 +562,7 @@ function renderTextCard(group, cardData) {
     fill: fillColor,
     stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#e0e0e0'),
     strokeWidth: 1,
-    cornerRadius: 4,
-    shadowColor: isEink ? 'transparent' : 'black',
-    shadowBlur: isEink ? 0 : 10,
-    shadowOpacity: isEink ? 0 : 0.1,
-    shadowOffset: { x: 0, y: isEink ? 0 : 2 }
+    cornerRadius: 4
   });
 
   group.add(background);
@@ -698,11 +694,7 @@ function renderImageCard(group, cardData) {
         fill: isEink ? '#ffffff' : (isDark ? '#2d3748' : '#fffacd'),
         stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#e0e0e0'),
         strokeWidth: 1,
-        cornerRadius: 4,
-        shadowColor: isEink ? 'transparent' : 'black',
-        shadowBlur: isEink ? 0 : 10,
-        shadowOpacity: isEink ? 0 : 0.1,
-        shadowOffset: { x: 0, y: isEink ? 0 : 2 }
+        cornerRadius: 4
       });
 
       group.add(background);
@@ -741,11 +733,7 @@ function renderImageCard(group, cardData) {
         fill: '#ffffff',
         stroke: isEink ? '#000000' : (isDark ? '#4a5568' : '#e0e0e0'),
         strokeWidth: 1,
-        cornerRadius: 4,
-        shadowColor: isEink ? 'transparent' : 'black',
-        shadowBlur: isEink ? 0 : 10,
-        shadowOpacity: isEink ? 0 : 0.1,
-        shadowOffset: { x: 0, y: isEink ? 0 : 2 }
+        cornerRadius: 4
       });
 
       // Calculate scale to fit display dimensions while preserving image quality
@@ -1917,19 +1905,11 @@ export function updateCardShadows() {
   cardGroups.forEach(group => {
     const background = group.findOne('Rect');
     if (background) {
-      if (isEink) {
-        // E-ink: no shadows
-        background.shadowColor('transparent');
-        background.shadowBlur(0);
-        background.shadowOpacity(0);
-        background.shadowOffset({ x: 0, y: 0 });
-      } else {
-        // Normal/dark: subtle shadows
-        background.shadowColor('black');
-        background.shadowBlur(10);
-        background.shadowOpacity(0.1);
-        background.shadowOffset({ x: 0, y: 2 });
-      }
+      // No shadows for performance
+      background.shadowColor('transparent');
+      background.shadowBlur(0);
+      background.shadowOpacity(0);
+      background.shadowOffset({ x: 0, y: 0 });
     }
   });
 
@@ -8077,44 +8057,51 @@ export function setupImageDragDrop() {
  * Fit all cards in view
  */
 export function fitAllCards() {
-  // ALWAYS fit ALL cards (like v2's cy.fit(null, 50))
-  const cards = layer.getChildren().filter(node => node.getAttr('cardId'));
+  // Check if there are selected cards
+  const selectedCards = layer.find('.selected').filter(node => node.getAttr('cardId'));
+  const cardsToFit = selectedCards.length > 0 ? selectedCards : layer.getChildren().filter(node => node.getAttr('cardId'));
 
-  if (cards.length === 0) {
+  if (cardsToFit.length === 0) {
     console.log('No cards to fit');
     return;
   }
 
-  // Calculate bounding box for all cards
+  console.log(`Fitting ${selectedCards.length > 0 ? 'selected' : 'all'} cards (${cardsToFit.length} total)`);
+
+  // Calculate bounding box in canvas coordinates (not screen coordinates)
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
 
-  cards.forEach(card => {
-    const box = card.getClientRect();
-    minX = Math.min(minX, box.x);
-    minY = Math.min(minY, box.y);
-    maxX = Math.max(maxX, box.x + box.width);
-    maxY = Math.max(maxY, box.y + box.height);
+  cardsToFit.forEach(card => {
+    const x = card.x();
+    const y = card.y();
+    const width = card.width();
+    const height = card.height();
+
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
   });
 
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
 
-  // Add fixed padding (50px like v2)
-  const padding = 50;
+  // Add padding
+  const padding = 100;
   const paddedWidth = contentWidth + padding * 2;
   const paddedHeight = contentHeight + padding * 2;
 
   // Calculate scale to fit
   const scaleX = stage.width() / paddedWidth;
   const scaleY = stage.height() / paddedHeight;
-  const scale = Math.min(scaleX, scaleY, 1); // Don't zoom in beyond 1x
+  const scale = Math.min(scaleX, scaleY); // Use the smallest scale needed to fit all cards
 
-  // Calculate center of content
-  const contentCenterX = minX + contentWidth / 2;
-  const contentCenterY = minY + contentHeight / 2;
+  // Calculate center of content WITH padding in canvas coordinates
+  const contentCenterX = minX - padding + paddedWidth / 2;
+  const contentCenterY = minY - padding + paddedHeight / 2;
 
   // Set new scale
   stage.scale({ x: scale, y: scale });
@@ -8126,7 +8113,7 @@ export function fitAllCards() {
   });
 
   stage.batchDraw();
-  console.log('Fitted and centered all cards in view');
+  console.log(`Fitted and centered ${selectedCards.length > 0 ? 'selected' : 'all'} cards in view`);
 }
 
 // ============================================================================
