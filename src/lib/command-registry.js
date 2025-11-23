@@ -125,6 +125,15 @@ const commandDefinitions = new Map([
     icon: '📂',
     contexts: ['board']
   }],
+  ['import-from-drive', {
+    id: 'import-from-drive',
+    name: 'Importera från Google Drive',
+    description: 'Välj och importera ZIP/JSON från Google Drive',
+    keyBinding: 'Ctrl+L',
+    category: 'Filer',
+    icon: '☁️📥',
+    contexts: ['board']
+  }],
   ['download-backup', {
     id: 'download-backup',
     name: 'Ladda ner backup',

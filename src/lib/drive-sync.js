@@ -697,3 +697,127 @@ export async function syncWithDrive(options = {}) {
     };
   }
 }
+
+/**
+ * Load Google Picker API library
+ */
+let pickerApiLoaded = false;
+async function loadPickerApi() {
+  if (pickerApiLoaded) return true;
+
+  return new Promise((resolve, reject) => {
+    if (window.google?.picker) {
+      pickerApiLoaded = true;
+      resolve(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://apis.google.com/js/api.js';
+    script.onload = () => {
+      window.gapi.load('picker', () => {
+        pickerApiLoaded = true;
+        resolve(true);
+      });
+    };
+    script.onerror = () => reject(new Error('Failed to load Google Picker API'));
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Open Google Picker to select a file from Drive
+ * Returns the selected file's ID
+ */
+export async function pickFileFromDrive() {
+  try {
+    // Get client ID
+    const clientId = await getGoogleClientId();
+    if (!clientId) {
+      throw new Error('Ingen Google OAuth Client ID konfigurerad');
+    }
+
+    // Load Picker API
+    await loadPickerApi();
+
+    // Initialize Drive client for authentication
+    const client = await initGoogleDrive();
+    const accessToken = window.google?.accounts?.oauth2?.revoke ?
+      client.authToken :
+      (await client.token?.()).access_token;
+
+    if (!accessToken) {
+      throw new Error('Ingen åtkomsttoken tillgänglig');
+    }
+
+    // Return a promise that resolves when user picks a file
+    return new Promise((resolve, reject) => {
+      const picker = new window.google.picker.PickerBuilder()
+        .addView(
+          new window.google.picker.DocsView()
+            .setIncludeFolders(true)
+            .setMimeTypes('application/zip,application/json')
+        )
+        .setOAuthToken(accessToken)
+        .setDeveloperKey(clientId) // Note: Picker needs both Client ID and optional API key
+        .setCallback((data) => {
+          if (data[window.google.picker.Response.ACTION] === window.google.picker.Action.PICKED) {
+            const file = data[window.google.picker.Response.DOCUMENTS][0];
+            resolve({
+              id: file[window.google.picker.Document.ID],
+              name: file[window.google.picker.Document.NAME],
+              mimeType: file[window.google.picker.Document.MIME_TYPE]
+            });
+          } else if (data[window.google.picker.Response.ACTION] === window.google.picker.Action.CANCEL) {
+            resolve(null);
+          }
+        })
+        .build();
+
+      picker.setVisible(true);
+    });
+
+  } catch (error) {
+    console.error('Picker error:', error);
+    throw new Error('Kunde inte öppna filväljaren: ' + error.message);
+  }
+}
+
+/**
+ * Import a file from Google Drive (ZIP or JSON)
+ */
+export async function importFromDrive() {
+  try {
+    // Pick file from Drive
+    const file = await pickFileFromDrive();
+
+    if (!file) {
+      return { success: false, message: 'Ingen fil vald' };
+    }
+
+    console.log('Selected file from Drive:', file);
+
+    // Download the file
+    const blob = await downloadBackupFromDrive(file.id);
+
+    if (!blob) {
+      return { success: false, message: 'Kunde inte ladda ner filen' };
+    }
+
+    // Import the blob (handleRestoreFromBlob is in toolbar.js, we'll need to call it)
+    // For now, return the blob so the caller can handle it
+    return {
+      success: true,
+      blob: blob,
+      fileName: file.name,
+      mimeType: file.mimeType
+    };
+
+  } catch (error) {
+    console.error('Import from Drive failed:', error);
+    return {
+      success: false,
+      message: 'Import misslyckades: ' + error.message
+    };
+  }
+}

@@ -2872,6 +2872,7 @@ function registerCanvasCommands() {
   register({ id: 'export-canvas', handler: () => exportCanvas(), contexts: ['board'] });
   register({ id: 'export-readable', handler: () => exportToReadableText(), contexts: ['board'] });
   register({ id: 'import-canvas', handler: () => importCanvas(), contexts: ['board'] });
+  register({ id: 'import-from-drive', handler: () => importFromDriveCommand(), contexts: ['board'] });
   register({ id: 'download-backup', handler: () => handleBackupDownload(), contexts: ['board', 'global'] });
   register({ id: 'restore-backup', handler: () => handleRestoreBackupCommand(), contexts: ['board'] });
   register({ id: 'drive-sync', handler: () => handleDriveSyncCommand(), contexts: ['global'] });
@@ -3055,6 +3056,77 @@ export async function importCanvas() {
 
     input.click();
   });
+}
+
+/**
+ * Import file from Google Drive (ZIP or JSON)
+ */
+export async function importFromDriveCommand() {
+  try {
+    const { importFromDrive } = await import('../lib/drive-sync.js');
+    const result = await importFromDrive();
+
+    if (!result.success) {
+      if (result.message !== 'Ingen fil vald') {
+        alert(result.message);
+      }
+      return;
+    }
+
+    const { blob, fileName, mimeType } = result;
+
+    // Handle based on file type
+    if (mimeType === 'application/zip' || fileName.endsWith('.zip')) {
+      // ZIP file - use handleRestoreFromBlob if available
+      if (window.handleRestoreFromBlob) {
+        await window.handleRestoreFromBlob(blob);
+        alert('Backup återställd från Google Drive!');
+      } else {
+        alert('Kunde inte återställa backup');
+      }
+    } else if (mimeType === 'application/json' || fileName.endsWith('.json')) {
+      // JSON file - parse and import like importCanvas
+      try {
+        const text = await blob.text();
+        const data = JSON.parse(text);
+
+        const { db } = await import('../lib/storage.js');
+
+        if (data.cards && Array.isArray(data.cards)) {
+          const cardsToImport = data.cards.map((card, i) => ({
+            ...card,
+            imported: true,
+            importedAt: new Date().toISOString(),
+            importedFrom: fileName,
+            importBatchIndex: i
+          }));
+
+          await db.cards.bulkPut(cardsToImport);
+          await reloadCanvas();
+
+          if (data.viewport) {
+            stage.position({ x: data.viewport.x, y: data.viewport.y });
+            stage.scale({ x: data.viewport.scale, y: data.viewport.scale });
+            stage.batchDraw();
+          }
+
+          console.log(`Imported ${data.cards.length} cards from Drive`);
+          alert(`Importerade ${data.cards.length} kort från Google Drive!`);
+        } else {
+          throw new Error('Ogiltigt JSON-format');
+        }
+      } catch (error) {
+        console.error('JSON import failed:', error);
+        alert('Misslyckades att importera JSON: ' + error.message);
+      }
+    } else {
+      alert('Okänd filtyp: ' + mimeType);
+    }
+
+  } catch (error) {
+    console.error('Import from Drive failed:', error);
+    alert('Misslyckades att importera från Drive: ' + error.message);
+  }
 }
 
 /**
