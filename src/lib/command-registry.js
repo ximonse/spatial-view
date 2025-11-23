@@ -48,7 +48,7 @@ const commandDefinitions = new Map([
     id: 'fit-all-cards',
     name: 'Passa alla kort',
     description: 'Zooma så att alla kort syns',
-    keyBinding: null,
+    keyBinding: '-',
     category: 'Navigation',
     icon: '⛶',
     contexts: ['board']
@@ -314,8 +314,9 @@ let contextResolver = () => ['global'];
 
 function normalizeKey(key) {
   if (!key) return '';
+  // Handle space/spacebar directly without trim() which removes spaces
+  if (key === ' ' || key.toLowerCase() === 'spacebar' || key.toLowerCase() === 'space') return ' ';
   const lower = key.trim();
-  if (lower.toLowerCase() === 'spacebar' || lower.toLowerCase() === 'space') return ' ';
   return lower.length === 1 ? lower.toLowerCase() : lower;
 }
 

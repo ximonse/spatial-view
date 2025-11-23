@@ -7697,6 +7697,10 @@ function showCommandPalette() {
 
   renderCommands(currentCommands);
 
+  // Auto-focus search input when palette opens
+  const searchInput = palette.querySelector('#command-search');
+  setTimeout(() => searchInput.focus(), 50);
+
   const highlightCommand = (index) => {
     const commandList = palette.querySelector('#command-list');
     const items = commandList.querySelectorAll('.command-item');
@@ -7716,7 +7720,6 @@ function showCommandPalette() {
     });
   };
 
-  const searchInput = palette.querySelector('#command-search');
   searchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase().trim();
 
