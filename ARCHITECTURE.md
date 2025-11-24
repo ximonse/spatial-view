@@ -175,4 +175,138 @@ git commit --no-verify
 
 ---
 
+## AI Assistant Architecture
+
+### Design Philosophy
+
+**Läs mer:** Se `docs/AI_DESIGN_PHILOSOPHY.md` för fullständig förklaring av designfilosofin.
+
+**Kort sammanfattning:** AI-assistenten använder MINIMAL toolbox + DJUP spatial förståelse istället för 30+ specialiserade verktyg.
+
+### Hur AI-systemet fungerar
+
+**Princip:** "En duktig hantverkare med hammare och såg kommer längre än en nybörjare med 30 specialverktyg."
+
+**Före (problem):**
+- 30+ fördefinierade arrange-tools
+- AI blir "tool selector" istället för "problem solver"
+- Rigid: kan bara göra vad tools tillåter
+- "Arrangera i 3 kategorier" → använder fel tool → 60 grids istället för 3
+
+**Efter (lösning):**
+- Minimal toolbox: `updateCards`, `getAllCards`, `getCanvasInfo`
+- AI förstår spatial geometri (kort = 200×150px, 15px = samma grupp, 250px = olika grupper)
+- AI komponerar lösningar från grundoperationer
+- "Arrangera i 3 kategorier" → analyserar data → beräknar layout → skapar 3 kolumner
+
+### Tool-arkitektur
+
+**Två olika toolboxes:**
+
+1. **AI:s toolbox** (src/canvas/core.js, lines 5139-5363):
+   - Information: `getAllCards`, `searchCards`, `listAllTags`, filter-funktioner
+   - Manipulation: `updateCards`, `selectCards`, `addTagsToCards`, `removeTagsFromCards`
+   - Kontext: `getCanvasInfo`
+   - Integrationer: Calendar-tools
+
+2. **Användarens toolbox** (src/canvas/core.js, lines 5367-6524):
+   - ALLA arrange-funktioner finns kvar i toolRegistry
+   - Tillgängliga via shortcuts, buttons, kommandopalett
+   - AI kan INTE kalla dessa direkt
+   - Exempel: `arrangeCardsInGrid`, `arrangeCardsTimeline`, `arrangeCardsKanban`
+
+**Viktigt:** AI:n har INTE tillgång till de specialiserade arrange-funktionerna, men användaren har det!
+
+### System Prompt (src/lib/gemini.js, lines 332-586)
+
+Istället för tool-beskrivningar innehåller prompten:
+
+1. **Spatial kunskap:**
+   ```
+   - Kort: 200×150px (fast storlek)
+   - 13-20px spacing = samma grupp
+   - 200-300px spacing = olika grupper
+   - Canvas: oändligt 2D-system
+   ```
+
+2. **Visuella mönster:**
+   ```
+   - Grid: x += 215px kolumner, y += 165px rader
+   - Kluster: 15px inom, 250px mellan
+   - Timeline: sortera efter datum, placera sekvensiellt
+   - Hierarki: central → periferi
+   ```
+
+3. **Arrangemangsalgoritmer:**
+   ```javascript
+   // Kategorisering (N teman):
+   För varje kategori i:
+     x = 100 + i * 450  // kolumnavstånd
+     För varje kort j:
+       y = 100 + j * 165  // radavstånd
+   ```
+
+4. **Meta-taggar (KRITISKT):**
+   - `#zotero`, `#gemini`, `#calendar`, `#ocr`, `#drive`
+   - MÅSTE alltid inkluderas i analys och gruppering
+   - Representerar ofta 50%+ av användarens data
+
+### Workflow: Hur AI resonerar
+
+**Exempel: "Arrangera mina kort i 3 kategorier"**
+
+1. **FÖRSTÅ:**
+   - `getAllCards()` → hämta alla kort
+   - Analysera tags (INKLUSIVE meta-taggar!)
+   - Identifiera 3 meningsfulla teman
+
+2. **PLANERA:**
+   - Kategori A: 15 kort (#forskning, #zotero)
+   - Kategori B: 22 kort (#möte, #calendar)
+   - Kategori C: 8 kort (#idé)
+   - Layout: 3 kolumner @ x=100, x=450, x=800
+
+3. **KOMPONERA:**
+   ```javascript
+   updateCards({
+     updates: [
+       {id: 1, x: 100, y: 100, tags: ["forskning"]},
+       {id: 2, x: 100, y: 265},
+       // ... kategori A
+       {id: 16, x: 450, y: 100, tags: ["möte"]},
+       // ... kategori B
+       {id: 38, x: 800, y: 100, tags: ["idé"]},
+       // ... kategori C
+     ]
+   })
+   ```
+
+4. **FÖRKLARA:**
+   - "Jag grupperade i Forskning (15 kort inklusive #zotero), Planering (22 kort inklusive #calendar), Kreativitet (8 kort)"
+   - Transparent om resonemang och val
+
+### Fördelar med denna arkitektur
+
+✅ **Intelligent:** AI resonerar istället för pattern-matching
+✅ **Flexibel:** Kan skapa VILKEN layout som helst
+✅ **Transparent:** Förklarar sina val och beräkningar
+✅ **Skalbar:** Ingen ny kod behövs för nya mönster
+✅ **Användarvänlig:** Shortcuts och buttons fungerar som vanligt
+
+### Testing och validering
+
+**Test cases:**
+1. "Arrangera i 3 kategorier" → ska skapa 3 kolumner, inte 60 grids
+2. "Gruppera forskningskort" → ska inkludera #zotero-kort
+3. "Visa veckan som tidslinje" → ska beräkna kronologisk layout
+4. "Samla duplicerade kort" → ska identifiera och gruppera
+
+**Success criteria:**
+- AI förklarar sitt resonemang
+- Meta-taggar inkluderas i alla operationer
+- Spacing-principer följs (15px inom, 250px mellan)
+- Användare behåller alla shortcuts
+
+---
+
 **Kom ihåg**: Målbilden är fortfarande 300-raders-moduler, men vi prioriterar stabilitet och fungerade features över perfekt arkitektur.

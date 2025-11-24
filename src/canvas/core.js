@@ -28,6 +28,7 @@ import Konva from 'konva';
 import { marked } from 'marked';
 import { getAllCards, updateCard, createCard, deleteCard, getCard } from './storage.js';
 import { processImage } from '../utils/image-processing.js';
+import { showClaudeAssistant } from '../ui/ai-assistant.js';
 import { getCardImageSrc, normalizeCardImage } from '../utils/card-images.js';
 import { readImageWithGemini, executeGeminiAgent, getGoogleAIAPIKey, executeChatGPTAgent } from './gemini.js';
 import { getUpcomingCalendarEvents, getTodayCalendarEvents, getThisWeekCalendarEvents, formatEventsForAI } from './calendar-sync.js';
@@ -2706,6 +2707,45 @@ async function handleReadWithAICommand() {
   alert(`✅ ${imageCardIds.length} kort lästa med Gemini AI. Texten finns på baksidan - dubbelklicka och klicka "Vänd kort" för att se.`);
 }
 
+// Wrapper function for showClaudeAssistant that provides necessary parameters
+async function initClaudeAssistant() {
+  // Import system instruction from gemini.js (or define here)
+  const systemInstruction = `Du är en INTELLIGENT AI-ASSISTENT för Spatial View - en visuell second brain med djup spatial förståelse.
+
+═══════════════════════════════════════════════════════════════════
+🎯 FILOSOFI: Förstå - Resonera - Komponera
+═══════════════════════════════════════════════════════════════════
+
+Du är INTE en robot som följer fördefinierade arrangemang. Du är en INTELLIGENT assistent som:
+✅ Förstår spatial organisation och visuell kommunikation
+✅ Komponerar lösningar från grundläggande operationer
+✅ Resonerar om rumsliga relationer och hierarkier
+✅ Anpassar organisering efter innehåll och kontext
+
+**Nyckelprincip:** "En duktig hantverkare med hammare och såg kommer längre än en nybörjare med 30 specialverktyg."
+
+📐 SPATIAL FÖRSTÅELSE:
+- Kort: 200×150px (fast storlek)
+- 13-20px spacing = samma grupp
+- 200-300px spacing = olika grupper
+- Meta-taggar (#zotero, #gemini, #claude, #calendar, #ocr) MÅSTE alltid inkluderas i analys!
+
+**SPRÅK:** Svenska
+**SAMMANFATTNING:** Du är en INTELLIGENT spatial assistent som förstår geometri, resonerar om layout, och komponerar lösningar. Meta-taggar MÅSTE alltid inkluderas!`;
+
+  // Get tools and toolRegistry from the scope where they're defined
+  // These are defined inside showGeminiAssistant, so we need to define them here too
+  // For now, we'll pass empty and rely on the toolRegistry being accessible
+
+  await showClaudeAssistant({
+    tools: window.spatialViewTools || [],
+    toolRegistry: window.spatialViewToolRegistry || {},
+    systemInstruction: systemInstruction,
+    loadHistory: loadConversationHistory,
+    saveHistory: saveConversationHistory
+  });
+}
+
 async function handleAIChooserCommand(forceChooser = false) {
   const savedChoice = getSavedAIPreference();
 
@@ -2714,18 +2754,21 @@ async function handleAIChooserCommand(forceChooser = false) {
       await showGeminiAssistant();
     } else if (savedChoice === 'chatgpt') {
       await showChatGPTAssistant();
+    } else if (savedChoice === 'claude') {
+      await initClaudeAssistant();
     }
     return;
   }
 
-  const selection = await showAIChooser();
-  const choice = selection?.model;
-  if (choice === 'gemini' || choice === 'chatgpt') {
+  const choice = await showAIProviderChooser();
+  if (choice) {
     rememberAIPreference(choice);
     if (choice === 'gemini') {
-      await showGeminiAssistant({ intent: selection.intent, prefetchedContextSummary: selection.contextSummary });
+      await showGeminiAssistant();
     } else if (choice === 'chatgpt') {
-      await showChatGPTAssistant({ intent: selection.intent, prefetchedContextSummary: selection.contextSummary });
+      await showChatGPTAssistant();
+    } else if (choice === 'claude') {
+      await initClaudeAssistant();
     }
   }
 }
@@ -4376,6 +4419,167 @@ function rememberAIPreference(model) {
   }
 }
 
+/**
+ * Shows AI provider chooser dialog
+ * @returns {Promise<string|null>} Selected AI provider ('gemini', 'claude', 'chatgpt') or null if cancelled
+ */
+function showAIProviderChooser() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'ai-chooser-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border-radius: 16px;
+      padding: 32px;
+      width: 90%;
+      max-width: 560px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+
+    const currentProvider = getSavedAIPreference() || 'gemini';
+
+    dialog.innerHTML = `
+      <h2 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 24px;">Välj AI-assistent</h2>
+      <p style="margin: 0 0 24px 0; color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
+        Olika AI-modeller har olika styrkor. Välj den som passar din uppgift bäst.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+        <!-- Claude Option -->
+        <button class="ai-option" data-provider="claude" style="
+          padding: 20px;
+          border: 2px solid ${currentProvider === 'claude' ? 'var(--accent-color)' : 'var(--border-color)'};
+          background: ${currentProvider === 'claude' ? 'rgba(var(--accent-color-rgb), 0.1)' : 'var(--bg-secondary)'};
+          border-radius: 12px;
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.2s;
+        ">
+          <div style="display: flex; align-items: start; gap: 16px;">
+            <span style="font-size: 32px;">🤖</span>
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <strong style="font-size: 16px; color: var(--text-primary);">Claude Sonnet 4.5</strong>
+                <span style="background: #10a37f; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600;">REKOMMENDERAD</span>
+              </div>
+              <p style="margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+                Bäst på spatial reasoning och komplex planering. Extremt bra på att följa instruktioner och resonera om layouts. Perfekt för att organisera kort intelligent!
+              </p>
+            </div>
+          </div>
+        </button>
+
+        <!-- Gemini Option -->
+        <button class="ai-option" data-provider="gemini" style="
+          padding: 20px;
+          border: 2px solid ${currentProvider === 'gemini' ? 'var(--accent-color)' : 'var(--border-color)'};
+          background: ${currentProvider === 'gemini' ? 'rgba(var(--accent-color-rgb), 0.1)' : 'var(--bg-secondary)'};
+          border-radius: 12px;
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.2s;
+        ">
+          <div style="display: flex; align-items: start; gap: 16px;">
+            <span style="font-size: 32px;">✨</span>
+            <div style="flex: 1;">
+              <strong style="font-size: 16px; color: var(--text-primary); display: block; margin-bottom: 6px;">Gemini 2.0 Flash</strong>
+              <p style="margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+                Snabb och mångsidig. Bra på bildanalys och kreativa uppgifter. Kan hantera stora mängder data effektivt.
+              </p>
+            </div>
+          </div>
+        </button>
+
+        <!-- ChatGPT Option -->
+        <button class="ai-option" data-provider="chatgpt" style="
+          padding: 20px;
+          border: 2px solid ${currentProvider === 'chatgpt' ? 'var(--accent-color)' : 'var(--border-color)'};
+          background: ${currentProvider === 'chatgpt' ? 'rgba(var(--accent-color-rgb), 0.1)' : 'var(--bg-secondary)'};
+          border-radius: 12px;
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.2s;
+        ">
+          <div style="display: flex; align-items: start; gap: 16px;">
+            <span style="font-size: 32px;">💬</span>
+            <div style="flex: 1;">
+              <strong style="font-size: 16px; color: var(--text-primary); display: block; margin-bottom: 6px;">ChatGPT 4</strong>
+              <p style="margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+                Balanserad och pålitlig. Bra allmän konversation och problemlösning. Känd och beprövad.
+              </p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button id="cancelAIChoice" style="
+          padding: 12px 24px;
+          border: 1px solid var(--border-color);
+          background: var(--bg-secondary);
+          color: var(--text-primary);
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+        ">Avbryt</button>
+      </div>
+    `;
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    const closeDialog = (provider = null) => {
+      overlay.remove();
+      resolve(provider);
+    };
+
+    // Hover effects
+    const options = dialog.querySelectorAll('.ai-option');
+    options.forEach(option => {
+      option.addEventListener('mouseenter', () => {
+        option.style.transform = 'translateY(-2px)';
+        option.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      });
+      option.addEventListener('mouseleave', () => {
+        option.style.transform = 'translateY(0)';
+        option.style.boxShadow = 'none';
+      });
+      option.addEventListener('click', () => {
+        const provider = option.getAttribute('data-provider');
+        rememberAIPreference(provider);
+        closeDialog(provider);
+      });
+    });
+
+    document.getElementById('cancelAIChoice').onclick = () => closeDialog();
+
+    // ESC to close
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        closeDialog();
+        document.removeEventListener('keydown', handleEsc);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+  });
+}
+
 function loadConversationHistory(model) {
   try {
     const stored = localStorage.getItem(getBoardScopedKey(model));
@@ -5227,44 +5431,6 @@ async function showGeminiAssistant(options = {}) {
         }
       },
       {
-        name: 'arrangeCardsInGrid',
-        description: 'Arrangera markerade kort i ett rutnät (grid) för bättre översikt',
-        parameters: {
-          type: 'object',
-          properties: {
-            columns: {
-              type: 'number',
-              description: 'Antal kolumner i rutnätet (standard: 4)'
-            },
-            spacing: {
-              type: 'number',
-              description: 'Avstånd mellan kort i pixlar (standard: 20)'
-            }
-          }
-        }
-      },
-      {
-        name: 'groupCardsByCategory',
-        description: 'Gruppera och arrangera kort baserat på deras tags eller kategorier',
-        parameters: {
-          type: 'object',
-          properties: {
-            categoryTag: {
-              type: 'string',
-              description: 'Tagg att gruppera efter (t.ex. "möte", "anteckning", "faktura")'
-            }
-          }
-        }
-      },
-      {
-        name: 'arrangeAllTagsInGrids',
-        description: 'Arrangera ALLA kort grupperade efter deras taggar i separata grids (vertikalt). ANVÄND DENNA för "sortera tematiskt" eller "gruppera alla taggar". Inga parametrar behövs!',
-        parameters: {
-          type: 'object',
-          properties: {}
-        }
-      },
-      {
         name: 'getUpcomingCalendar',
         description: 'Hämta kommande kalenderhändelser från Google Calendar för de närmaste veckorna. ANVÄND för att se vad användaren har för sig framöver!',
         parameters: {
@@ -5307,112 +5473,95 @@ async function showGeminiAssistant(options = {}) {
         }
       },
       {
-        name: 'arrangeCardsByDay',
-        description: 'Arrangera kort i ett VECKOSCHEMA där varje dag är en kolumn. Perfekt för att visualisera kalendern! ANVÄND för "visa som veckoschema", "organisera efter dag" eller "skapa veckovy"',
+        name: 'selectCards',
+        description: 'Markera/välj specifika kort baserat på deras ID:n. Korten blir visuellt markerade och kan sedan användas för andra operationer.',
         parameters: {
           type: 'object',
           properties: {
-            weeks: {
-              type: 'number',
-              description: 'Antal veckor att visa (standard: 2)'
-            },
-            useExtractedDate: {
-              type: 'boolean',
-              description: 'Använd Gemini-extraherade datum istället för skapandedatum (standard: true)'
-            }
-          }
-        }
-      },
-      {
-        name: 'applySchoolColorScheme',
-        description: 'Tillämpa FÖRINSTÄLLT färgschema för SKOLÄMNEN. Ma=blå, SV=gul, Eng=röd, lunch=vit, etc. ANVÄND ALLTID denna för skolschema! ANVÄND för "färglägg schemat", "applicera färger" eller efter att ha importerat kalender',
-        parameters: {
-          type: 'object',
-          properties: {}
-        }
-      },
-      {
-        name: 'colorCardsByPattern',
-        description: 'Färglägg kort baserat på textmönster. Alla kort som innehåller "lunch" får samma färg, alla "viktigt" får annan färg etc. ANVÄND för "färglägg alla lunch-möten" eller "ge alla SV-kort blå färg"',
-        parameters: {
-          type: 'object',
-          properties: {
-            patterns: {
+            cardIds: {
               type: 'array',
-              description: 'Array av mönster och färger. Exempel: [{pattern: "lunch", color: "#ffeb3b"}, {pattern: "viktigt", color: "#f44336"}, {pattern: "Ma", color: "#2196f3"}]',
+              items: { type: 'number' },
+              description: 'Array av kort-ID:n att markera'
+            }
+          },
+          required: ['cardIds']
+        }
+      },
+      {
+        name: 'addTagsToCards',
+        description: 'Lägg till en eller flera taggar till specifika kort. Om taggen redan finns på kortet ignoreras den.',
+        parameters: {
+          type: 'object',
+          properties: {
+            cardIds: {
+              type: 'array',
+              items: { type: 'number' },
+              description: 'Array av kort-ID:n att lägga till taggar på'
+            },
+            tags: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array av taggar att lägga till'
+            }
+          },
+          required: ['cardIds', 'tags']
+        }
+      },
+      {
+        name: 'removeTagsFromCards',
+        description: 'Ta bort en eller flera taggar från specifika kort.',
+        parameters: {
+          type: 'object',
+          properties: {
+            cardIds: {
+              type: 'array',
+              items: { type: 'number' },
+              description: 'Array av kort-ID:n att ta bort taggar från'
+            },
+            tags: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array av taggar att ta bort'
+            }
+          },
+          required: ['cardIds', 'tags']
+        }
+      },
+      {
+        name: 'updateCards',
+        description: 'Uppdatera position, färg eller tags för flera kort samtidigt. Använd detta för att arrangera kort i rumsliga mönster (grids, kluster, timelines etc). Kom ihåg: kort är 200×150px, 13-20px spacing = samma grupp, 200-300px = olika grupper.',
+        parameters: {
+          type: 'object',
+          properties: {
+            updates: {
+              type: 'array',
+              description: 'Array av uppdateringar att utföra',
               items: {
                 type: 'object',
                 properties: {
-                  pattern: { type: 'string', description: 'Textsträng att söka efter (case-insensitive)' },
-                  color: { type: 'string', description: 'Hex-färgkod (t.ex. #ff0000 för röd)' }
+                  id: { type: 'number', description: 'Kort-ID' },
+                  x: { type: 'number', description: 'Ny X-position (valfri)' },
+                  y: { type: 'number', description: 'Ny Y-position (valfri)' },
+                  color: { type: 'string', description: 'Ny färg som hex-kod (valfri)' },
+                  tags: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Nya taggar att ersätta befintliga taggar med (valfri)'
+                  }
                 },
-                required: ['pattern', 'color']
+                required: ['id']
               }
             }
           },
-          required: ['patterns']
+          required: ['updates']
         }
       },
       {
-        name: 'arrangeCardsTimeline',
-        description: 'Arrangera kort kronologiskt på en tidslinje baserat på skapandedatum eller extraherade datum',
+        name: 'getCanvasInfo',
+        description: 'Hämta information om canvas och kort-dimensioner. Använd detta för att förstå hur mycket utrymme du har att arbeta med.',
         parameters: {
           type: 'object',
-          properties: {
-            useExtractedDate: {
-              type: 'boolean',
-              description: 'Använd Gemini-extraherade datum istället för skapandedatum (standard: false)'
-            },
-            orientation: {
-              type: 'string',
-              description: 'Horisontell eller vertikal tidslinje: "horizontal" eller "vertical" (standard: horizontal)'
-            }
-          }
-        }
-      },
-      {
-        name: 'arrangeCardsKanban',
-        description: 'Arrangera kort i Kanban-kolumner baserat på status-tags eller kategorier',
-        parameters: {
-          type: 'object',
-          properties: {
-            columns: {
-              type: 'array',
-              description: 'Lista med kolumnnamn/tags (t.ex. ["backlog", "todo", "pågår", "klart"])',
-              items: { type: 'string' }
-            }
-          },
-          required: ['columns']
-        }
-      },
-      {
-        name: 'arrangeCardsMindMap',
-        description: 'Arrangera kort i en radiell mind map-struktur runt ett centralkort',
-        parameters: {
-          type: 'object',
-          properties: {
-            centerCardId: {
-              type: 'number',
-              description: 'ID för centralkortet (om inte angivet används första markerade kortet)'
-            },
-            radius: {
-              type: 'number',
-              description: 'Radie från centrum i pixlar (standard: 300)'
-            }
-          }
-        }
-      },
-      {
-        name: 'arrangeCardsCluster',
-        description: 'Gruppera och arrangera kort i kluster baserat på gemensamma tags eller innehåll',
-        parameters: {
-          type: 'object',
-          properties: {
-            method: {
-              type: 'string',
-              description: 'Klustermetod: "tags" (gruppera efter gemensamma tags) eller "smart" (AI-baserad) (standard: tags)'
-            }
-          }
+          properties: {}
         }
       }
     ]
@@ -6209,20 +6358,27 @@ async function showGeminiAssistant(options = {}) {
     },
 
     arrangeCardsCluster: async (args) => {
+      console.log('🗂️ arrangeCardsCluster called with args:', args);
       const method = args.method || 'tags';
 
+      const cards = await getAllCards();
+
+      // Use selected cards if any, otherwise use all cards
       const selectedNodes = layer.find('.selected');
-      if (selectedNodes.length === 0) {
-        return 'Inga kort är markerade. Markera kort först för att klustra dem.';
+      const nodesToCluster = selectedNodes.length > 0 ? selectedNodes : layer.getChildren().filter(node => node.getAttr('cardId'));
+
+      if (nodesToCluster.length === 0) {
+        console.warn('❌ arrangeCardsCluster: No cards found');
+        return 'Inga kort hittades.';
       }
 
-      const cards = await getAllCards();
+      console.log(`🗂️ Clustering ${nodesToCluster.length} cards (${selectedNodes.length > 0 ? 'selected' : 'all'})`);
 
       if (method === 'tags') {
         // Group by most common tag
         const tagGroups = new Map();
 
-        for (const node of selectedNodes) {
+        for (const node of nodesToCluster) {
           const cardId = node.getAttr('cardId');
           const card = cards.find(c => c.id === cardId);
           if (!card || !card.tags || card.tags.length === 0) {
@@ -6271,12 +6427,309 @@ async function showGeminiAssistant(options = {}) {
           .map(([tag, items]) => `"${tag}": ${items.length}`)
           .join(', ');
         return `Skapade ${tagGroups.size} kluster baserat på tags: ${clusterSummary}.`;
+      } else if (method === 'smart' || method === 'ai' || method === 'content') {
+        console.log('🧠 Smart clustering by content similarity');
+
+        // Group cards by exact text match (for duplicates)
+        const contentGroups = new Map();
+
+        for (const node of nodesToCluster) {
+          const cardId = node.getAttr('cardId');
+          const card = cards.find(c => c.id === cardId);
+
+          if (!card || !card.text) {
+            // Cards without text go to "no-text" group
+            if (!contentGroups.has('__no_text__')) {
+              contentGroups.set('__no_text__', []);
+            }
+            contentGroups.get('__no_text__').push({ node, card });
+            continue;
+          }
+
+          // Normalize text for comparison (trim and lowercase)
+          const normalizedText = card.text.trim().toLowerCase();
+
+          // Find or create group for this content
+          if (!contentGroups.has(normalizedText)) {
+            contentGroups.set(normalizedText, []);
+          }
+          contentGroups.get(normalizedText).push({ node, card });
+        }
+
+        // Arrange clusters spatially
+        const clusterSpacing = 267;
+        const cardSpacing = 13;
+        const cardWidth = 200;
+        const cardHeight = 150;
+
+        let clusterIndex = 0;
+        const duplicateGroups = [];
+
+        // Sort groups: duplicates first (largest groups first), then single cards
+        const sortedGroups = Array.from(contentGroups.entries()).sort((a, b) => {
+          const [contentA, itemsA] = a;
+          const [contentB, itemsB] = b;
+
+          // Prioritize groups with multiple items
+          if (itemsA.length > 1 && itemsB.length === 1) return -1;
+          if (itemsA.length === 1 && itemsB.length > 1) return 1;
+
+          // Within duplicate groups, larger groups first
+          if (itemsA.length > 1 && itemsB.length > 1) {
+            return itemsB.length - itemsA.length;
+          }
+
+          return 0;
+        });
+
+        for (const [content, items] of sortedGroups) {
+          if (items.length > 1) {
+            duplicateGroups.push({ content: content.substring(0, 50), count: items.length });
+          }
+
+          const clusterX = (clusterIndex % 3) * clusterSpacing;
+          const clusterY = Math.floor(clusterIndex / 3) * clusterSpacing;
+
+          // Arrange cards within cluster in a grid
+          items.forEach((item, index) => {
+            const col = index % 3;
+            const row = Math.floor(index / 3);
+            const x = clusterX + col * (cardWidth + cardSpacing);
+            const y = clusterY + row * (cardHeight + cardSpacing);
+            item.node.position({ x, y });
+          });
+
+          clusterIndex++;
+        }
+
+        layer.batchDraw();
+
+        if (duplicateGroups.length > 0) {
+          const totalDuplicates = duplicateGroups.reduce((sum, g) => sum + g.count, 0);
+          console.log(`✅ Smart clustering complete: ${duplicateGroups.length} duplicate groups, ${totalDuplicates} total duplicate cards`);
+          return `Arrangerade ${nodesToCluster.length} kort. Hittade ${duplicateGroups.length} grupper av dubbletter (totalt ${totalDuplicates} dubbletter). Dubbletter arrangerade först i grids, sedan unika kort.`;
+        } else {
+          console.log(`✅ Smart clustering complete: No duplicates found, arranged ${nodesToCluster.length} cards`);
+          return `Arrangerade ${nodesToCluster.length} kort. Inga dubbletter hittades.`;
+        }
       } else {
-        // Smart clustering would use AI/semantic similarity
-        return 'Smart clustering (AI-baserad) är inte implementerad än. Använd method: "tags" istället.';
+        return `Okänd klustermetod: ${method}. Använd "tags", "smart", "ai", eller "content".`;
       }
+    },
+    selectCards: async (args) => {
+      console.log('🎯 selectCards called with args:', args);
+      const { cardIds } = args;
+
+      if (!cardIds || cardIds.length === 0) {
+        console.warn('❌ selectCards: No cardIds provided');
+        return 'Inga kort-ID:n angavs.';
+      }
+
+      // Clear current selection
+      layer.find('.selected').forEach(node => {
+        node.removeName('selected');
+        const bg = node.findOne('Rect');
+        if (bg) {
+          bg.stroke('#e0e0e0');
+          bg.strokeWidth(1);
+        }
+      });
+
+      // Select specified cards
+      let selectedCount = 0;
+      for (const cardId of cardIds) {
+        const group = layer.findOne(node => node.getAttr('cardId') === cardId);
+        if (group) {
+          group.addName('selected');
+          const bg = group.findOne('Rect');
+          if (bg) {
+            bg.stroke('#2196F3');
+            bg.strokeWidth(3);
+          }
+          selectedCount++;
+        } else {
+          console.warn(`⚠️ Card ${cardId} not found on canvas`);
+        }
+      }
+
+      layer.batchDraw();
+      console.log(`✅ selectCards: Selected ${selectedCount} of ${cardIds.length} cards`);
+      return `Markerade ${selectedCount} av ${cardIds.length} kort.`;
+    },
+    addTagsToCards: async (args) => {
+      console.log('🏷️ addTagsToCards called with args:', args);
+      const { cardIds, tags } = args;
+
+      if (!cardIds || cardIds.length === 0) {
+        console.warn('❌ addTagsToCards: No cardIds provided');
+        return 'Inga kort-ID:n angavs.';
+      }
+      if (!tags || tags.length === 0) {
+        console.warn('❌ addTagsToCards: No tags provided');
+        return 'Inga taggar angavs.';
+      }
+
+      const cards = await getAllCards();
+      let updatedCount = 0;
+
+      for (const cardId of cardIds) {
+        const card = cards.find(c => c.id === cardId);
+        if (card) {
+          const existingTags = card.tags || [];
+          const newTags = [...new Set([...existingTags, ...tags])]; // Merge and deduplicate
+
+          if (newTags.length > existingTags.length) {
+            console.log(`🏷️ Adding tags to card ${cardId}:`, existingTags, '→', newTags);
+            await updateCard(cardId, { tags: newTags });
+            updatedCount++;
+          } else {
+            console.log(`ℹ️ Card ${cardId} already has all tags`);
+          }
+        } else {
+          console.warn(`⚠️ Card ${cardId} not found in database`);
+        }
+      }
+
+      await reloadCanvas();
+      console.log(`✅ addTagsToCards: Updated ${updatedCount} cards`);
+      return `Lade till taggar [${tags.join(', ')}] på ${updatedCount} kort.`;
+    },
+    removeTagsFromCards: async (args) => {
+      const { cardIds, tags } = args;
+
+      if (!cardIds || cardIds.length === 0) {
+        return 'Inga kort-ID:n angavs.';
+      }
+      if (!tags || tags.length === 0) {
+        return 'Inga taggar angavs.';
+      }
+
+      const cards = await getAllCards();
+      let updatedCount = 0;
+
+      for (const cardId of cardIds) {
+        const card = cards.find(c => c.id === cardId);
+        if (card && card.tags) {
+          const newTags = card.tags.filter(t => !tags.includes(t));
+
+          if (newTags.length < card.tags.length) {
+            await updateCard(cardId, { tags: newTags });
+            updatedCount++;
+          }
+        }
+      }
+
+      await reloadCanvas();
+      return `Tog bort taggar [${tags.join(', ')}] från ${updatedCount} kort.`;
+    },
+
+    updateCards: async (args) => {
+      const { updates } = args;
+      console.log('🔄 updateCards called with:', updates);
+
+      if (!updates || updates.length === 0) {
+        return 'Inga uppdateringar angavs.';
+      }
+
+      const cards = await getAllCards();
+      let updatedCount = 0;
+      const errors = [];
+
+      for (const update of updates) {
+        const { id, x, y, color, tags } = update;
+
+        // Find the card
+        const card = cards.find(c => c.id === id);
+        if (!card) {
+          errors.push(`Kort ${id} hittades inte`);
+          continue;
+        }
+
+        // Build update object with only provided fields
+        const updateData = {};
+        if (x !== undefined) updateData.x = x;
+        if (y !== undefined) updateData.y = y;
+        if (color !== undefined) updateData.cardColor = color;
+        if (tags !== undefined) updateData.tags = tags;
+
+        // Update card in database
+        await updateCard(id, updateData);
+
+        // Update visual position immediately if x/y changed
+        const node = layer.findOne(`#card-${id}`);
+        if (node) {
+          if (x !== undefined) node.x(x);
+          if (y !== undefined) node.y(y);
+          if (color !== undefined) {
+            const rect = node.findOne('.card-background');
+            if (rect) rect.fill(color);
+          }
+        }
+
+        updatedCount++;
+      }
+
+      // Redraw canvas
+      layer.batchDraw();
+
+      if (errors.length > 0) {
+        return `Uppdaterade ${updatedCount} kort. Fel: ${errors.join(', ')}`;
+      }
+      return `Uppdaterade ${updatedCount} kort.`;
+    },
+
+    getCanvasInfo: async () => {
+      const stageWidth = stage.width();
+      const stageHeight = stage.height();
+      const cards = await getAllCards();
+
+      // Calculate canvas bounds from existing cards
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      cards.forEach(card => {
+        if (card.x < minX) minX = card.x;
+        if (card.y < minY) minY = card.y;
+        if (card.x + 200 > maxX) maxX = card.x + 200;
+        if (card.y + 150 > maxY) maxY = card.y + 150;
+      });
+
+      return {
+        viewport: {
+          width: stageWidth,
+          height: stageHeight
+        },
+        cardDimensions: {
+          width: 200,
+          height: 150,
+          description: "Standardstorlek för alla kort"
+        },
+        spacing: {
+          sameGroup: "13-20px",
+          differentGroups: "200-300px",
+          description: "13-20px spacing indikerar samma grupp/kategori, 200-300px indikerar olika grupper"
+        },
+        currentBounds: {
+          minX: minX === Infinity ? 0 : minX,
+          minY: minY === Infinity ? 0 : minY,
+          maxX: maxX === -Infinity ? stageWidth : maxX,
+          maxY: maxY === -Infinity ? stageHeight : maxY,
+          usedWidth: maxX === -Infinity ? 0 : maxX - minX,
+          usedHeight: maxY === -Infinity ? 0 : maxY - minY
+        },
+        totalCards: cards.length,
+        tips: [
+          "Använd updateCards() för att flytta flera kort samtidigt",
+          "Tänk på att kort är 200×150px när du beräknar positioner",
+          "Lämna minst 13-20px mellan kort i samma grupp",
+          "Lämna 200-300px mellan olika grupper",
+          "Meta-taggar (#zotero, #gemini, #calendar, #ocr) ska alltid räknas med i analys"
+        ]
+      };
     }
   };
+
+  // Expose tools and toolRegistry globally so Claude can access them
+  window.spatialViewTools = tools;
+  window.spatialViewToolRegistry = toolRegistry;
 
   renderStoredConversation();
 
