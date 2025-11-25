@@ -46,6 +46,11 @@ export function initSearchBar(state) {
       const paletteOpen = document.querySelector('[data-command-palette="overlay"]');
       if (paletteOpen) return;
 
+      // Close any open editors/dialogs first
+      const openOverlays = document.querySelectorAll('[style*="z-index: 10000"]');
+      openOverlays.forEach(overlay => overlay.remove());
+
+      // Clear everything
       clearClipboard();
       deselectAllCards();
 
