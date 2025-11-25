@@ -270,9 +270,15 @@ export async function sendClaudePrompt(userMessage, tools, toolRegistry, convers
         continueLoop = false;
     }
 
-    // Extract text response
+    // Extract text response - check both text blocks and tool_use blocks with text
     const textBlock = response.content.find(block => block.type === 'text');
-    return textBlock ? textBlock.text : 'Inget svar från Claude.';
+    if (textBlock && textBlock.text) {
+        return textBlock.text;
+    }
+
+    // If no text block, create a helpful message from tool results
+    console.warn('⚠️ Claude returned no text, only tool calls');
+    return 'Verktyg körda. Fråga Claude vad den gjorde!';
 }
 
 /**

@@ -2709,37 +2709,115 @@ async function handleReadWithAICommand() {
 
 // Wrapper function for showClaudeAssistant that provides necessary parameters
 async function initClaudeAssistant() {
-  // Import system instruction from gemini.js (or define here)
-  const systemInstruction = `Du är en INTELLIGENT AI-ASSISTENT för Spatial View - en visuell second brain med djup spatial förståelse.
+  // Minimal system prompt - Claude reasons about spatial organization
+  const systemInstruction = `Du är en spatial organiseringsassistent.
 
-═══════════════════════════════════════════════════════════════════
-🎯 FILOSOFI: Förstå - Resonera - Komponera
-═══════════════════════════════════════════════════════════════════
+Kort är objekt med: {id, text, tags, x, y, width: 200, height: 150, selected: true/false}
+Canvas är oändlig 2D-yta.
 
-Du är INTE en robot som följer fördefinierade arrangemang. Du är en INTELLIGENT assistent som:
-✅ Förstår spatial organisation och visuell kommunikation
-✅ Komponerar lösningar från grundläggande operationer
-✅ Resonerar om rumsliga relationer och hierarkier
-✅ Anpassar organisering efter innehåll och kontext
+Spatial principer:
+- Närhet (13-20px) = relaterade kort
+- Separation (200-300px) = olika grupper
+- Grid: rader och kolumner med jämnt avstånd
+- Undvik överlapp
 
-**Nyckelprincip:** "En duktig hantverkare med hammare och såg kommer längre än en nybörjare med 30 specialverktyg."
+TVÅ ARBETSFLÖDEN:
 
-📐 SPATIAL FÖRSTÅELSE:
-- Kort: 200×150px (fast storlek)
-- 13-20px spacing = samma grupp
-- 200-300px spacing = olika grupper
-- Meta-taggar (#zotero, #gemini, #claude, #calendar, #ocr) MÅSTE alltid inkluderas i analys!
+Flöde 1 - Användaren markerar, du arrangerar:
+1. getAllCards() visar selected=true för kort användaren har markerat
+2. Beräkna nya positioner för endast de markerade korten
+3. Använd updateCards() för att flytta dem
+4. Förklara vad du gjorde
 
-**SPRÅK:** Svenska
-**SAMMANFATTNING:** Du är en INTELLIGENT spatial assistent som förstår geometri, resonerar om layout, och komponerar lösningar. Meta-taggar MÅSTE alltid inkluderas!`;
+Flöde 2 - Du markerar, användaren arrangerar:
+1. Förstå vilka kort användaren vill arrangera
+2. Hämta kort med getAllCards()
+3. Använd selectCards(cardIds) för att markera korten (blå ram)
+4. Berätta för användaren att de nu kan använda kortkommandon:
+   - h = horisontell linje
+   - v = vertikal linje
+   - g+h = grid horisontellt
+   - g+v = grid vertikalt
+   - q = kluster
 
-  // Get tools and toolRegistry from the scope where they're defined
-  // These are defined inside showGeminiAssistant, so we need to define them here too
-  // For now, we'll pass empty and rely on the toolRegistry being accessible
+Språk: Svenska. Var kreativ och intelligent!`;
+
+  // Claude gets MINIMAL tools (not all 16 from Gemini) - spatial reasoning philosophy
+  const claudeTools = [{
+    functionDeclarations: [
+      {
+        name: 'getAllCards',
+        description: 'Hämta alla kort med deras egenskaper (id, text, tags, x, y, selected). Returnerar selected=true för kort som användaren har markerat.',
+        parameters: { type: 'object', properties: {} }
+      },
+      {
+        name: 'updateCards',
+        description: 'Uppdatera flera korts positioner och/eller tags samtidigt',
+        parameters: {
+          type: 'object',
+          properties: {
+            updates: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  x: { type: 'number' },
+                  y: { type: 'number' },
+                  tags: { type: 'array', items: { type: 'string' } }
+                }
+              }
+            }
+          },
+          required: ['updates']
+        }
+      },
+      {
+        name: 'selectCards',
+        description: 'Markera specifika kort (med blå ram) så användaren kan arrangera dem med kortkommandon (h=horisontellt, v=vertikalt, g+h=grid horisontellt, g+v=grid vertikalt, q=kluster)',
+        parameters: {
+          type: 'object',
+          properties: {
+            cardIds: {
+              type: 'array',
+              items: { type: 'number' },
+              description: 'Lista med kort-ID:n att markera'
+            }
+          },
+          required: ['cardIds']
+        }
+      },
+      {
+        name: 'getCanvasInfo',
+        description: 'Hämta canvas-information (kort-dimensioner, spacing-regler)',
+        parameters: { type: 'object', properties: {} }
+      }
+    ]
+  }];
+
+  // Minimal tool registry for Claude (reuse implementations from Gemini if needed)
+  const ensureGeminiToolsExist = async () => {
+    if (!window.spatialViewToolRegistry || Object.keys(window.spatialViewToolRegistry).length === 0) {
+      console.warn('⚠️ Gemini tools not initialized. Initializing...');
+      const geminiPanel = await showGeminiAssistant();
+      if (geminiPanel && geminiPanel.cleanup) {
+        geminiPanel.cleanup();
+      }
+    }
+  };
+
+  await ensureGeminiToolsExist();
+
+  const claudeToolRegistry = {
+    getAllCards: window.spatialViewToolRegistry.getAllCards,
+    updateCards: window.spatialViewToolRegistry.updateCards,
+    selectCards: window.spatialViewToolRegistry.selectCards,
+    getCanvasInfo: window.spatialViewToolRegistry.getCanvasInfo
+  };
 
   await showClaudeAssistant({
-    tools: window.spatialViewTools || [],
-    toolRegistry: window.spatialViewToolRegistry || {},
+    tools: claudeTools,
+    toolRegistry: claudeToolRegistry,
     systemInstruction: systemInstruction,
     loadHistory: loadConversationHistory,
     saveHistory: saveConversationHistory
@@ -2772,6 +2850,9 @@ async function handleAIChooserCommand(forceChooser = false) {
     }
   }
 }
+
+// Expose handleAIChooserCommand globally for AI assistant "Byt" button
+window.handleAIChooserCommand = handleAIChooserCommand;
 
 async function handleBackupDownload() {
   const downloadBtn = document.getElementById('btn-download');
@@ -5576,6 +5657,13 @@ async function showGeminiAssistant(options = {}) {
     },
     getAllCards: async () => {
       const cards = await getAllCards();
+      // Check which cards are selected on canvas
+      const selectedCardIds = new Set();
+      layer.find('.selected').forEach(node => {
+        const cardId = node.getAttr('cardId');
+        if (cardId) selectedCardIds.add(cardId);
+      });
+
       return cards.map(c => ({
         id: c.id,
         text: c.text?.substring(0, 100),
@@ -5586,7 +5674,8 @@ async function showGeminiAssistant(options = {}) {
         created: c.created,
         createdAt: c.metadata?.createdAt,
         extractedDate: c.geminiMetadata?.extractedDate,
-        extractedDateTime: c.geminiMetadata?.extractedDateTime
+        extractedDateTime: c.geminiMetadata?.extractedDateTime,
+        selected: selectedCardIds.has(c.id)
       }));
     },
     listAllTags: async () => {
@@ -6525,36 +6614,36 @@ async function showGeminiAssistant(options = {}) {
         return 'Inga kort-ID:n angavs.';
       }
 
-      // Clear current selection
-      layer.find('.selected').forEach(node => {
-        node.removeName('selected');
-        const bg = node.findOne('Rect');
-        if (bg) {
-          bg.stroke('#e0e0e0');
-          bg.strokeWidth(1);
-        }
-      });
+      const cardIdSet = new Set(cardIds);
 
-      // Select specified cards
-      let selectedCount = 0;
-      for (const cardId of cardIds) {
-        const group = layer.findOne(node => node.getAttr('cardId') === cardId);
-        if (group) {
-          group.addName('selected');
-          const bg = group.findOne('Rect');
+      // Process all cards: selected cards get full opacity, others get faded
+      layer.find('.card').forEach(node => {
+        const cardId = node.getAttr('cardId');
+        const isSelected = cardIdSet.has(cardId);
+        const bg = node.findOne('Rect');
+
+        if (isSelected) {
+          // Selected card: full opacity, blue border
+          node.opacity(1);
+          node.addName('selected');
           if (bg) {
             bg.stroke('#2196F3');
             bg.strokeWidth(3);
           }
-          selectedCount++;
         } else {
-          console.warn(`⚠️ Card ${cardId} not found on canvas`);
+          // Non-selected card: faded, gray border
+          node.opacity(0.3);
+          node.removeName('selected');
+          if (bg) {
+            bg.stroke('#e0e0e0');
+            bg.strokeWidth(1);
+          }
         }
-      }
+      });
 
       layer.batchDraw();
-      console.log(`✅ selectCards: Selected ${selectedCount} of ${cardIds.length} cards`);
-      return `Markerade ${selectedCount} av ${cardIds.length} kort.`;
+      console.log(`✅ selectCards: Selected ${cardIds.length} cards, faded others`);
+      return `✅ Markerade ${cardIds.length} kort (ljusa). Andra kort tonade (genomskinliga). Tryck Escape för att återställa alla kort.`;
     },
     addTagsToCards: async (args) => {
       console.log('🏷️ addTagsToCards called with args:', args);
@@ -9807,7 +9896,9 @@ export function deselectAllCards() {
   const isEink = document.body.classList.contains('eink-theme');
   const isDark = document.body.classList.contains('dark-theme');
 
-  layer.find('.selected').forEach(group => {
+  // Reset all cards (both selected and faded ones)
+  layer.find('.card').forEach(group => {
+    group.opacity(1); // Reset opacity for all cards
     group.removeName('selected');
     const background = group.findOne('Rect');
     if (background) {
@@ -9825,7 +9916,7 @@ export function deselectAllCards() {
   });
 
   layer.batchDraw();
-  console.log('All cards deselected');
+  console.log('All cards deselected and opacity reset');
   refreshStats();
 }
 

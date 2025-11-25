@@ -49,7 +49,8 @@ export function initSearchBar(state) {
       clearClipboard();
       deselectAllCards();
 
-      if (searchInput && searchInput.value) {
+      // Always clear search (even if search input is empty) to reset AI selections
+      if (searchInput) {
         searchInput.value = '';
         handleSearch({ target: searchInput });
         searchInput.blur();
